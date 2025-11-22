@@ -25,6 +25,22 @@ const translations = {
     en: 'Order created successfully',
     no: 'Bestilling opprettet vellykket'
   },
+  ORDER_CONFIRMED: {
+    en: 'Order confirmed',
+    no: 'Bestilling bekreftet'
+  },
+  ORDER_SHIPPED: {
+    en: 'Order has been shipped',
+    no: 'Bestilling er sendt'
+  },
+  ORDER_DELIVERED: {
+    en: 'Order delivered successfully',
+    no: 'Bestilling levert vellykket'
+  },
+  ORDER_CANCELLED: {
+    en: 'Order cancelled',
+    no: 'Bestilling kansellert'
+  },
   ITEM_ADDED_TO_CART: {
     en: 'Item added to cart',
     no: 'Vare lagt til i handlekurv'

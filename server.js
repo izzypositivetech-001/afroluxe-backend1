@@ -57,11 +57,14 @@ app.get('/api/health', (req, res) => {
 import productRoutes from './routes/productsRoutes.js';
 import adminProductRoutes from './routes/adminProductRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
 
 
 app.use('/api/products', productRoutes);
 app.use('/api/admin/products', adminProductRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/checkout', orderRoutes)
+app.use('/api/orders', orderRoutes);
 
 
 app.use(notFound);
