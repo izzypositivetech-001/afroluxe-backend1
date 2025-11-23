@@ -53,6 +53,18 @@ const translations = {
     en: 'Logout successful',
     no: 'Utlogging vellykket'
   },
+  PAYMENT_SUCCESS: {
+    en: 'Payment completed successfully',
+    no: 'Betaling fullført vellykket'
+  },
+  PAYMENT_FAILED: {
+    en: 'Payment failed',
+    no: 'Betaling mislyktes'
+  },
+  REFUND_PROCESSED: {
+    en: 'Refund processed successfully',
+    no: 'Refusjon behandlet vellykket'
+  },
   INVALID_CREDENTIALS: {
     en: 'Invalid email or password',
     no: 'Ugyldig e-post eller passord'

@@ -1,5 +1,5 @@
 import express from 'express';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -9,7 +9,7 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 import languageMiddleware from './middleware/languageMiddleware.js';
 import ResponseHandler from './utils/responseHandler.js';
 
-dotenv.config();
+
 
 const app = express();
 
@@ -60,6 +60,7 @@ import cartRoutes from './routes/cartRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 
 app.use('/api/products', productRoutes);
@@ -69,6 +70,8 @@ app.use('/api/checkout', orderRoutes)
 app.use('/api/orders', orderRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin/users', adminRoutes);
+app.use('/api/payments', paymentRoutes);
+
 
 app.use(notFound);
 app.use(errorHandler);

@@ -122,6 +122,12 @@ const orderSchema = new mongoose.Schema(
     notes: {
       type: String,
       trim: true
+    },
+    refunds: {
+        refundId: String,
+        amount: Number,
+        reason: String,
+        createdAt: Date
     }
   },
   {
