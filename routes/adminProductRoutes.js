@@ -10,8 +10,14 @@ import {
   validateCreateProduct,
   validateUpdateProduct
 } from '../middleware/productValidation.js';
+import { protect } from '../middleware/authMiddleware.js';
+import { authorize } from '../middleware/roleMiddleware.js';
 
 const router = express.Router();
+
+//All admin products routes require authentication and authorization
+router.use(protect);
+router.use(authorize('admin', 'super_admin'));
 
 router.get('/', getAdminProducts);
 router.post('/', validateCreateProduct, createProduct);

@@ -45,6 +45,14 @@ const translations = {
     en: 'Item added to cart',
     no: 'Vare lagt til i handlekurv'
   },
+  LOGIN_SUCCESS: {
+    en: 'Login successful',
+    no: 'Innlogging vellykket'
+  },
+  LOGOUT_SUCCESS: {
+    en: 'Logout successful',
+    no: 'Utlogging vellykket'
+  },
   INVALID_CREDENTIALS: {
     en: 'Invalid email or password',
     no: 'Ugyldig e-post eller passord'

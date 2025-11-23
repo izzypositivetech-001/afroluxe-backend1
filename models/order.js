@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import Counter from './counter.js';
 
 const orderItemSchema = new mongoose.Schema({
   product: {
@@ -129,15 +130,24 @@ const orderSchema = new mongoose.Schema(
 );
 
 // Generate order ID before saving
-orderSchema.pre('save', async function (next) {
-  if (!this.orderId) {
-    const date = new Date();
-    const year = date.getFullYear();
-    const count = await mongoose.model('Order').countDocuments();
-    this.orderId = `ALX-${year}-${String(count + 1).padStart(4, '0')}`;
-  }
+orderSchema.pre("validate", async function (next) {
+  if (this.orderId) return next();
+
+  const year = new Date().getFullYear();
+
+  // atomic increment (no race conditions)
+  const counter = await Counter.findOneAndUpdate(
+    { id: "orderId" },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+
+  const sequence = String(counter.seq).padStart(4, "0");
+
+  this.orderId = `ALX-${year}-${sequence}`;
   next();
 });
+
 
 const Order = mongoose.model('Order', orderSchema);
 
