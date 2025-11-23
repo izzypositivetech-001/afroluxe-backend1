@@ -123,11 +123,24 @@ const orderSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
-    refunds: {
+    refunds: [
+      {
         refundId: String,
         amount: Number,
         reason: String,
         createdAt: Date
+      }
+    ],
+    trackingNumber: {
+      type: String,
+      trim: true
+    },
+    carrier: {
+      type: String,
+      trim: true
+    },
+    estimatedDelivery: {
+      type: Date
     }
   },
   {

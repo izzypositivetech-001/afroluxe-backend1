@@ -61,6 +61,7 @@ import orderRoutes from './routes/orderRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import adminOrderRoutes from './routes/adminOrderRoutes.js';
 
 
 app.use('/api/products', productRoutes);
@@ -71,6 +72,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin/users', adminRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/admin/orders', adminOrderRoutes);
 
 
 app.use(notFound);

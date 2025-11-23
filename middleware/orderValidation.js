@@ -1,3 +1,8 @@
+/**
+ * Order Validation Middleware
+ * Validates checkout data
+ */
+
 import { body, validationResult } from 'express-validator';
 import ResponseHandler from '../utils/responseHandler.js';
 
@@ -61,6 +66,61 @@ export const validateCheckout = [
     .trim()
     .isLength({ max: 500 })
     .withMessage('Notes must not exceed 500 characters'),
+
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return ResponseHandler.error(
+        res,
+        400,
+        'Validation failed',
+        errors.array()
+      );
+    }
+    next();
+  }
+];
+
+// Validation for update order status
+export const validateOrderStatus = [
+  body('orderStatus')
+    .notEmpty()
+    .withMessage('Order status is required')
+    .isIn(['pending', 'processing', 'shipped', 'delivered', 'cancelled'])
+    .withMessage('Invalid order status'),
+
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return ResponseHandler.error(
+        res,
+        400,
+        'Validation failed',
+        errors.array()
+      );
+    }
+    next();
+  }
+];
+
+// Validation for update shipping info
+export const validateShippingInfo = [
+  body('trackingNumber')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 100 })
+    .withMessage('Tracking number must be between 3 and 100 characters'),
+  
+  body('carrier')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Carrier name must be between 2 and 50 characters'),
+  
+  body('estimatedDelivery')
+    .optional()
+    .isISO8601()
+    .withMessage('Invalid date format for estimated delivery'),
 
   (req, res, next) => {
     const errors = validationResult(req);
