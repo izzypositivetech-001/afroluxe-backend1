@@ -65,6 +65,14 @@ const translations = {
     en: 'Refund processed successfully',
     no: 'Refusjon behandlet vellykket'
   },
+  IMAGE_UPLOADED: {
+    en: 'Images uploaded successfully',
+    no: 'Bilder lastet opp vellykket'
+  },
+  IMAGE_DELETED: {
+    en: 'Image deleted successfully',
+    no: 'Bilde slettet vellykket'
+  },
   INVALID_CREDENTIALS: {
     en: 'Invalid email or password',
     no: 'Ugyldig e-post eller passord'

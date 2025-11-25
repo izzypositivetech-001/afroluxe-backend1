@@ -52,8 +52,8 @@ export const validateCheckout = [
     .notEmpty()
     .withMessage('Postal code is required')
     .trim()
-    .matches(/^[0-9]{4}$/)
-    .withMessage('Please enter a valid Norwegian postal code (4 digits)'),
+    .matches(/^[a-zA-Z0-9\s-]{4,10}$/)
+    .withMessage('Please enter a valid postal code'),
   
   body('shippingAddress.country')
     .optional()

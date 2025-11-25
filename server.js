@@ -18,7 +18,7 @@ connectDB();
 app.use(helmet());
 
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: true,
     credentials: true,
     optionsSuccessStatus: 200
 };
@@ -62,6 +62,8 @@ import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import adminOrderRoutes from './routes/adminOrderRoutes.js';
+import imageRoutes from './routes/imageRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
 
 
 app.use('/api/products', productRoutes);
@@ -73,6 +75,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin/users', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
+app.use('/api/admin/images', imageRoutes);
+app.use('/api/categories', categoryRoutes);
 
 
 app.use(notFound);

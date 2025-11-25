@@ -87,7 +87,6 @@ export const addToCart = async (req, res, next) => {
         });
       }
     }
-
     await cart.save();
 
     // Populate cart for response
@@ -97,10 +96,7 @@ export const addToCart = async (req, res, next) => {
       res,
       200,
       getMessage('ITEM_ADDED_TO_CART', language),
-      {
-        sessionId: cart.sessionId,
-        cart
-      }
+      cart
     );
 
   } catch (error) {
@@ -117,14 +113,25 @@ export const getCart = async (req, res, next) => {
     const { sessionId } = req.params;
     const language = req.language || 'en';
 
-    const cart = await Cart.findOne({ sessionId }).populate('items.product');
+    let cart = await Cart.findOne({ sessionId }).populate('items.product');
 
+    // Create empty cart if it doesn't exist
     if (!cart) {
-      return ResponseHandler.error(
-        res,
-        404,
-        'Cart not found'
-      );
+      try {
+        cart = await Cart.create({
+          sessionId,
+          items: [],
+          totalAmount: 0,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+        });
+      } catch (error) {
+        // Handle race condition: if cart was created by another request concurrently
+        if (error.code === 11000) {
+          cart = await Cart.findOne({ sessionId }).populate('items.product');
+        } else {
+          throw error;
+        }
+      }
     }
 
     // Transform cart items based on language

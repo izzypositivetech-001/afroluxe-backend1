@@ -19,8 +19,12 @@ export const createOrder = async (req, res, next) => {
       return ResponseHandler.error(res, 400, 'Session ID is required');
     }
 
+    console.log(`[CreateOrder] Received sessionId: ${sessionId}`);
+
     // Get cart
     const cart = await Cart.findOne({ sessionId }).populate('items.product');
+    
+    console.log(`[CreateOrder] Cart found: ${cart ? 'Yes' : 'No'}, Items: ${cart?.items?.length || 0}`);
 
     if (!cart || cart.items.length === 0) {
       return ResponseHandler.error(res, 400, 'Cart is empty');
@@ -248,6 +252,33 @@ export const trackOrder = async (req, res, next) => {
       trackingInfo
     );
 
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Lookup orders by email
+// @access  Public
+export const lookupOrdersByEmail = async (req, res, next) => {
+  try {
+    const { email } = req.query;
+    const language = req.language || 'en';
+
+    if (!email) {
+      return ResponseHandler.error(res, 400, 'Email is required');
+    }
+
+    // Find all orders for this email
+    const orders = await Order.find({ 'customer.email': email })
+      .populate('items.product')
+      .sort({ createdAt: -1 }); // Most recent first
+
+    return ResponseHandler.success(
+      res,
+      200,
+      getMessage('SUCCESS', language),
+      orders
+    );
   } catch (error) {
     next(error);
   }
