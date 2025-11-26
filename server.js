@@ -62,6 +62,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import adminOrderRoutes from "./routes/adminOrderRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
 
 app.use("/api/products", productRoutes);
 app.use("/api/admin/products", adminProductRoutes);
@@ -74,6 +75,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/admin/orders", adminOrderRoutes);
 app.use("/api/admin/images", imageRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/admin/analytics", analyticsRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
