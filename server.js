@@ -1,37 +1,51 @@
 import express from "express";
 import "dotenv/config";
-import cors from "cors";
-import helmet from "helmet";
 import morgan from "morgan";
-import mongoSanitize from "express-mongo-sanitize";
 import connectDB from "./config/database.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import languageMiddleware from "./middleware/languageMiddleware.js";
 import ResponseHandler from "./utils/responseHandler.js";
 
+import {
+  configureHelmet,
+  configureCors,
+  configureMongoSanitize,
+  configureXssClean,
+  configureHpp,
+  securityHeaders,
+  securityLogger,
+  ipBlocker,
+} from "./middleware/security.js";
+import { apiLimiter } from "./middleware/rateLimiter.js";
+
 const app = express();
 
 connectDB();
 
-app.use(helmet());
+// Security middleware (applied in order)
+app.use(ipBlocker); // Block banned IPs first
+app.use(securityLogger); // Log suspicious activity
+app.use(configureHelmet()); // Security headers
+app.use(configureCors()); // CORS configuration
+app.use(securityHeaders); // Additional security headers
 
-const corsOptions = {
-  origin: true,
-  credentials: true,
-  optionsSuccessStatus: 200,
-};
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.use(cors(corsOptions));
+// Data sanitization
+app.use(configureMongoSanitize()); // Prevent NoSQL injection
+app.use(configureXssClean()); // Prevent XSS attacks
+app.use(configureHpp()); // Prevent HTTP parameter pollution
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Apply general rate limiting to all routes
+app.use("/api/", apiLimiter);
 
-app.use(mongoSanitize());
-
+// Morgan logging (development only)
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
+// Language middleware
 app.use(languageMiddleware);
 
 app.get("/", (req, res) => {
@@ -63,19 +77,31 @@ import adminOrderRoutes from "./routes/adminOrderRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import searchRoutes from "./routes/searchRoutes.js";
+import securityRoutes from "./routes/securityRoutes.js";
+
+// Import specific rate limiters
+import {
+  authLimiter,
+  orderLimiter,
+  searchLimiter,
+  paymentLimiter,
+  adminLimiter,
+} from "./middleware/rateLimiter.js";
 
 app.use("/api/products", productRoutes);
-app.use("/api/admin/products", adminProductRoutes);
+app.use("/api/admin/products", adminLimiter, adminProductRoutes);
 app.use("/api/cart", cartRoutes);
-app.use("/api/checkout", orderRoutes);
+app.use("/api/checkout", orderLimiter, orderRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/admin/users", adminRoutes);
-app.use("/api/payments", paymentRoutes);
-app.use("/api/admin/orders", adminOrderRoutes);
-app.use("/api/admin/images", imageRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/admin/analytics", analyticsRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/admin/users", adminLimiter, adminRoutes);
+app.use("/api/payments", paymentLimiter, paymentRoutes);
+app.use("/api/admin/orders", adminLimiter, adminOrderRoutes);
+app.use("/api/admin/images", adminLimiter, imageRoutes);
+app.use("/api/admin/analytics", adminLimiter, analyticsRoutes);
+app.use("/api/search", searchLimiter, searchRoutes);
+app.use("/api/admin/security", securityRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
