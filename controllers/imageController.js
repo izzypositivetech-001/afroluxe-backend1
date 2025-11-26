@@ -3,26 +3,26 @@
  * Handles image uploads to Cloudinary
  */
 
-import cloudinary from '../config/cloudinary.js';
-import Product from '../models/product.js';
-import ResponseHandler from '../utils/responseHandler.js';
-import { getMessage } from '../utils/translations.js';
+import cloudinary from "../config/cloudinary.js";
+import Product from "../models/product.js";
+import ResponseHandler from "../utils/responseHandler.js";
+import { getMessage } from "../utils/translations.js";
 
 /**
  * Upload product images
- * POST /api/admin/products/:productId/images
+ * POST /api/admin/images/products/:productId
  */
 export const uploadProductImages = async (req, res, next) => {
   try {
     const { productId } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     // Check if files uploaded
     if (!req.files || req.files.length === 0) {
       return ResponseHandler.error(
         res,
         400,
-        language === 'en' ? 'No files uploaded' : 'Ingen filer lastet opp'
+        language === "en" ? "No files uploaded" : "Ingen filer lastet opp"
       );
     }
 
@@ -32,22 +32,22 @@ export const uploadProductImages = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Product not found' : 'Produkt ikke funnet'
+        language === "en" ? "Product not found" : "Produkt ikke funnet"
       );
     }
 
     // Upload images to Cloudinary
-    const uploadPromises = req.files.map(file => {
+    const uploadPromises = req.files.map((file) => {
       return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
-            folder: 'afroluxe/products',
-            resource_type: 'image',
+            folder: "afroluxe/products",
+            resource_type: "image",
             transformation: [
-              { width: 1000, height: 1000, crop: 'limit' },
-              { quality: 'auto' },
-              { fetch_format: 'auto' }
-            ]
+              { width: 1000, height: 1000, crop: "limit" },
+              { quality: "auto" },
+              { fetch_format: "auto" },
+            ],
           },
           (error, result) => {
             if (error) reject(error);
@@ -61,27 +61,31 @@ export const uploadProductImages = async (req, res, next) => {
 
     const uploadResults = await Promise.all(uploadPromises);
 
-    // Extract URLs and public IDs
-    const newImages = uploadResults.map(result => ({
-      url: result.secure_url,
-      publicId: result.public_id
-    }));
+    // Extract URLs only (Product schema expects array of strings)
+    const imageUrls = uploadResults.map((result) => result.secure_url);
 
-    // Add images to product
-    product.images.push(...newImages);
+    // Add image URLs to product
+    product.images.push(...imageUrls);
     await product.save();
+
+    // Return metadata for frontend
+    const uploadedImages = uploadResults.map((result) => ({
+      url: result.secure_url,
+      publicId: result.public_id,
+    }));
 
     return ResponseHandler.success(
       res,
       200,
-      language === 'en' ? 'Images uploaded successfully' : 'Bilder lastet opp vellykket',
+      language === "en"
+        ? "Images uploaded successfully"
+        : "Bilder lastet opp vellykket",
       {
         productId: product._id,
-        uploadedImages: newImages,
-        totalImages: product.images.length
+        uploadedImages,
+        totalImages: product.images.length,
       }
     );
-
   } catch (error) {
     next(error);
   }
@@ -94,14 +98,14 @@ export const uploadProductImages = async (req, res, next) => {
 export const deleteProductImage = async (req, res, next) => {
   try {
     const { productId, imageIndex } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     const product = await Product.findById(productId);
     if (!product) {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Product not found' : 'Produkt ikke funnet'
+        language === "en" ? "Product not found" : "Produkt ikke funnet"
       );
     }
 
@@ -110,15 +114,22 @@ export const deleteProductImage = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         400,
-        language === 'en' ? 'Invalid image index' : 'Ugyldig bildeindeks'
+        language === "en" ? "Invalid image index" : "Ugyldig bildeindeks"
       );
     }
 
     const imageToDelete = product.images[index];
 
-    // Delete from Cloudinary
-    if (imageToDelete.publicId) {
-      await cloudinary.uploader.destroy(imageToDelete.publicId);
+    // Delete from Cloudinary - extract public_id from URL
+    if (imageToDelete) {
+      const publicId = imageToDelete
+        .split("/")
+        .slice(-2)
+        .join("/")
+        .split(".")[0];
+      await cloudinary.uploader.destroy(
+        `afroluxe/products/${publicId.split("/")[1]}`
+      );
     }
 
     // Remove from product
@@ -128,13 +139,14 @@ export const deleteProductImage = async (req, res, next) => {
     return ResponseHandler.success(
       res,
       200,
-      language === 'en' ? 'Image deleted successfully' : 'Bilde slettet vellykket',
+      language === "en"
+        ? "Image deleted successfully"
+        : "Bilde slettet vellykket",
       {
         deletedImage: imageToDelete,
-        remainingImages: product.images.length
+        remainingImages: product.images.length,
       }
     );
-
   } catch (error) {
     next(error);
   }
@@ -148,14 +160,10 @@ export const reorderProductImages = async (req, res, next) => {
   try {
     const { productId } = req.params;
     const { imageOrder } = req.body;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     if (!imageOrder || !Array.isArray(imageOrder)) {
-      return ResponseHandler.error(
-        res,
-        400,
-        'Image order array is required'
-      );
+      return ResponseHandler.error(res, 400, "Image order array is required");
     }
 
     const product = await Product.findById(productId);
@@ -163,7 +171,7 @@ export const reorderProductImages = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Product not found' : 'Produkt ikke funnet'
+        language === "en" ? "Product not found" : "Produkt ikke funnet"
       );
     }
 
@@ -172,14 +180,14 @@ export const reorderProductImages = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         400,
-        'Image order array length must match number of images'
+        "Image order array length must match number of images"
       );
     }
 
     // Reorder images
-    const reorderedImages = imageOrder.map(index => {
+    const reorderedImages = imageOrder.map((index) => {
       if (index < 0 || index >= product.images.length) {
-        throw new Error('Invalid image index in order array');
+        throw new Error("Invalid image index in order array");
       }
       return product.images[index];
     });
@@ -190,12 +198,13 @@ export const reorderProductImages = async (req, res, next) => {
     return ResponseHandler.success(
       res,
       200,
-      language === 'en' ? 'Images reordered successfully' : 'Bilder omorganisert vellykket',
+      language === "en"
+        ? "Images reordered successfully"
+        : "Bilder omorganisert vellykket",
       {
-        images: product.images
+        images: product.images,
       }
     );
-
   } catch (error) {
     next(error);
   }
@@ -208,14 +217,14 @@ export const reorderProductImages = async (req, res, next) => {
 export const setPrimaryImage = async (req, res, next) => {
   try {
     const { productId, imageIndex } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     const product = await Product.findById(productId);
     if (!product) {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Product not found' : 'Produkt ikke funnet'
+        language === "en" ? "Product not found" : "Produkt ikke funnet"
       );
     }
 
@@ -224,7 +233,7 @@ export const setPrimaryImage = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         400,
-        language === 'en' ? 'Invalid image index' : 'Ugyldig bildeindeks'
+        language === "en" ? "Invalid image index" : "Ugyldig bildeindeks"
       );
     }
 
@@ -236,13 +245,14 @@ export const setPrimaryImage = async (req, res, next) => {
     return ResponseHandler.success(
       res,
       200,
-      language === 'en' ? 'Primary image set successfully' : 'Hovedbilde satt vellykket',
+      language === "en"
+        ? "Primary image set successfully"
+        : "Hovedbilde satt vellykket",
       {
         primaryImage: selectedImage,
-        images: product.images
+        images: product.images,
       }
     );
-
   } catch (error) {
     next(error);
   }
@@ -255,21 +265,24 @@ export const setPrimaryImage = async (req, res, next) => {
 export const deleteAllProductImages = async (req, res, next) => {
   try {
     const { productId } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     const product = await Product.findById(productId);
     if (!product) {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Product not found' : 'Produkt ikke funnet'
+        language === "en" ? "Product not found" : "Produkt ikke funnet"
       );
     }
 
     // Delete all images from Cloudinary
-    const deletePromises = product.images
-      .filter(img => img.publicId)
-      .map(img => cloudinary.uploader.destroy(img.publicId));
+    const deletePromises = product.images.map((imageUrl) => {
+      const publicId = imageUrl.split("/").slice(-2).join("/").split(".")[0];
+      return cloudinary.uploader.destroy(
+        `afroluxe/products/${publicId.split("/")[1]}`
+      );
+    });
 
     await Promise.all(deletePromises);
 
@@ -280,12 +293,13 @@ export const deleteAllProductImages = async (req, res, next) => {
     return ResponseHandler.success(
       res,
       200,
-      language === 'en' ? 'All images deleted successfully' : 'Alle bilder slettet vellykket',
+      language === "en"
+        ? "All images deleted successfully"
+        : "Alle bilder slettet vellykket",
       {
-        deletedCount
+        deletedCount,
       }
     );
-
   } catch (error) {
     next(error);
   }
@@ -298,28 +312,22 @@ export const deleteAllProductImages = async (req, res, next) => {
 export const getUploadSignature = async (req, res, next) => {
   try {
     const timestamp = Math.round(new Date().getTime() / 1000);
-    
+
     const signature = cloudinary.utils.api_sign_request(
       {
         timestamp,
-        folder: 'afroluxe/products'
+        folder: "afroluxe/products",
       },
       process.env.CLOUDINARY_API_SECRET
     );
 
-    return ResponseHandler.success(
-      res,
-      200,
-      'Signature generated',
-      {
-        signature,
-        timestamp,
-        cloudName: process.env.CLOUDINARY_CLOUD_NAME,
-        apiKey: process.env.CLOUDINARY_API_KEY,
-        folder: 'afroluxe/products'
-      }
-    );
-
+    return ResponseHandler.success(res, 200, "Signature generated", {
+      signature,
+      timestamp,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      apiKey: process.env.CLOUDINARY_API_KEY,
+      folder: "afroluxe/products",
+    });
   } catch (error) {
     next(error);
   }

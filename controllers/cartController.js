@@ -1,8 +1,8 @@
-import Cart from '../models/cart.js';
-import Product from '../models/product.js';
-import ResponseHandler from '../utils/responseHandler.js';
-import { getMessage } from '../utils/translations.js';
-import { v4 as uuidv4 } from 'uuid';
+import Cart from "../models/cart.js";
+import Product from "../models/product.js";
+import ResponseHandler from "../utils/responseHandler.js";
+import { getMessage } from "../utils/translations.js";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * Add item to cart
@@ -11,14 +11,14 @@ import { v4 as uuidv4 } from 'uuid';
 export const addToCart = async (req, res, next) => {
   try {
     const { sessionId, productId, quantity } = req.body;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     // Validate inputs
     if (!productId || !quantity) {
       return ResponseHandler.error(
         res,
         400,
-        'Product ID and quantity are required'
+        "Product ID and quantity are required"
       );
     }
 
@@ -28,7 +28,7 @@ export const addToCart = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         404,
-        getMessage('PRODUCT_NOT_FOUND', language)
+        getMessage("PRODUCT_NOT_FOUND", language)
       );
     }
 
@@ -37,7 +37,7 @@ export const addToCart = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         400,
-        getMessage('INSUFFICIENT_STOCK', language)
+        getMessage("INSUFFICIENT_STOCK", language)
       );
     }
 
@@ -51,28 +51,30 @@ export const addToCart = async (req, res, next) => {
       // Create new cart
       cart = new Cart({
         sessionId: finalSessionId,
-        items: [{
-          product: productId,
-          quantity,
-          price: product.price
-        }]
+        items: [
+          {
+            product: productId,
+            quantity,
+            price: product.price,
+          },
+        ],
       });
     } else {
       // Check if product already in cart
       const existingItemIndex = cart.items.findIndex(
-        item => item.product.toString() === productId
+        (item) => item.product.toString() === productId
       );
 
       if (existingItemIndex > -1) {
         // Update quantity
         const newQuantity = cart.items[existingItemIndex].quantity + quantity;
-        
+
         // Check stock for new quantity
         if (product.stock < newQuantity) {
           return ResponseHandler.error(
             res,
             400,
-            getMessage('INSUFFICIENT_STOCK', language)
+            getMessage("INSUFFICIENT_STOCK", language)
           );
         }
 
@@ -83,22 +85,22 @@ export const addToCart = async (req, res, next) => {
         cart.items.push({
           product: productId,
           quantity,
-          price: product.price
+          price: product.price,
         });
       }
     }
+
     await cart.save();
 
     // Populate cart for response
-    await cart.populate('items.product');
+    await cart.populate("items.product");
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('ITEM_ADDED_TO_CART', language),
+      getMessage("ITEM_ADDED_TO_CART", language),
       cart
     );
-
   } catch (error) {
     next(error);
   }
@@ -111,9 +113,9 @@ export const addToCart = async (req, res, next) => {
 export const getCart = async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
-    let cart = await Cart.findOne({ sessionId }).populate('items.product');
+    let cart = await Cart.findOne({ sessionId }).populate("items.product");
 
     // Create empty cart if it doesn't exist
     if (!cart) {
@@ -122,12 +124,12 @@ export const getCart = async (req, res, next) => {
           sessionId,
           items: [],
           totalAmount: 0,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         });
       } catch (error) {
         // Handle race condition: if cart was created by another request concurrently
         if (error.code === 11000) {
-          cart = await Cart.findOne({ sessionId }).populate('items.product');
+          cart = await Cart.findOne({ sessionId }).populate("items.product");
         } else {
           throw error;
         }
@@ -138,31 +140,32 @@ export const getCart = async (req, res, next) => {
     const transformedCart = {
       _id: cart._id,
       sessionId: cart.sessionId,
-      items: cart.items.map(item => ({
+      items: cart.items.map((item) => ({
         _id: item._id,
-        product: item.product ? {
-          _id: item.product._id,
-          name: item.product.name[language],
-          images: item.product.images,
-          stock: item.product.stock,
-          sku: item.product.sku
-        } : null,
+        product: item.product
+          ? {
+              _id: item.product._id,
+              name: item.product.name[language],
+              images: item.product.images,
+              stock: item.product.stock,
+              sku: item.product.sku,
+            }
+          : null,
         quantity: item.quantity,
         price: item.price,
-        subtotal: item.price * item.quantity
+        subtotal: item.price * item.quantity,
       })),
       totalAmount: cart.totalAmount,
       expiresAt: cart.expiresAt,
-      createdAt: cart.createdAt
+      createdAt: cart.createdAt,
     };
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('SUCCESS', language),
+      getMessage("SUCCESS", language),
       transformedCart
     );
-
   } catch (error) {
     next(error);
   }
@@ -175,38 +178,30 @@ export const getCart = async (req, res, next) => {
 export const updateCartItem = async (req, res, next) => {
   try {
     const { sessionId, productId, quantity } = req.body;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     // Validate inputs
     if (!sessionId || !productId || quantity === undefined) {
       return ResponseHandler.error(
         res,
         400,
-        'Session ID, product ID, and quantity are required'
+        "Session ID, product ID, and quantity are required"
       );
     }
 
     const cart = await Cart.findOne({ sessionId });
 
     if (!cart) {
-      return ResponseHandler.error(
-        res,
-        404,
-        'Cart not found'
-      );
+      return ResponseHandler.error(res, 404, "Cart not found");
     }
 
     // Find item in cart
     const itemIndex = cart.items.findIndex(
-      item => item.product.toString() === productId
+      (item) => item.product.toString() === productId
     );
 
     if (itemIndex === -1) {
-      return ResponseHandler.error(
-        res,
-        404,
-        'Item not found in cart'
-      );
+      return ResponseHandler.error(res, 404, "Item not found in cart");
     }
 
     // If quantity is 0, remove item
@@ -219,7 +214,7 @@ export const updateCartItem = async (req, res, next) => {
         return ResponseHandler.error(
           res,
           404,
-          getMessage('PRODUCT_NOT_FOUND', language)
+          getMessage("PRODUCT_NOT_FOUND", language)
         );
       }
 
@@ -227,7 +222,7 @@ export const updateCartItem = async (req, res, next) => {
         return ResponseHandler.error(
           res,
           400,
-          getMessage('INSUFFICIENT_STOCK', language)
+          getMessage("INSUFFICIENT_STOCK", language)
         );
       }
 
@@ -237,15 +232,14 @@ export const updateCartItem = async (req, res, next) => {
     }
 
     await cart.save();
-    await cart.populate('items.product');
+    await cart.populate("items.product");
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('CART_UPDATED', language),
+      getMessage("CART_UPDATED", language),
       cart
     );
-
   } catch (error) {
     next(error);
   }
@@ -258,31 +252,26 @@ export const updateCartItem = async (req, res, next) => {
 export const removeCartItem = async (req, res, next) => {
   try {
     const { sessionId, itemId } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     const cart = await Cart.findOne({ sessionId });
 
     if (!cart) {
-      return ResponseHandler.error(
-        res,
-        404,
-        'Cart not found'
-      );
+      return ResponseHandler.error(res, 404, "Cart not found");
     }
 
     // Remove item
-    cart.items = cart.items.filter(item => item._id.toString() !== itemId);
+    cart.items = cart.items.filter((item) => item._id.toString() !== itemId);
 
     await cart.save();
-    await cart.populate('items.product');
+    await cart.populate("items.product");
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('ITEM_REMOVED', language),
+      getMessage("ITEM_REMOVED", language),
       cart
     );
-
   } catch (error) {
     next(error);
   }
@@ -295,30 +284,20 @@ export const removeCartItem = async (req, res, next) => {
 export const clearCart = async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
-    const cart = await Cart.findOne({ sessionId });
+    const cart = await Cart.findOneAndDelete({ sessionId });
 
     if (!cart) {
-      return ResponseHandler.error(
-        res,
-        404,
-        'Cart not found'
-      );
+      return ResponseHandler.error(res, 404, "Cart not found");
     }
-
-    cart.items = [];
-    cart.totalAmount = 0;
-
-    await cart.save();
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('CART_CLEARED', language),
-      cart
+      getMessage("CART_CLEARED", language),
+      { message: "Cart cleared successfully" }
     );
-
   } catch (error) {
     next(error);
   }

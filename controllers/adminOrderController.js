@@ -3,10 +3,10 @@
  * Manage orders - view, update status, statistics
  */
 
-import Order from '../models/order.js';
-import Product from '../models/product.js';
-import ResponseHandler from '../utils/responseHandler.js';
-import { getMessage } from '../utils/translations.js';
+import Order from "../models/order.js";
+import Product from "../models/product.js";
+import ResponseHandler from "../utils/responseHandler.js";
+import { getMessage } from "../utils/translations.js";
 
 /**
  * Get all orders with filters and pagination
@@ -14,8 +14,8 @@ import { getMessage } from '../utils/translations.js';
  */
 export const getAllOrders = async (req, res, next) => {
   try {
-    const language = req.language || 'en';
-    
+    const language = req.language || "en";
+
     // Pagination
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -23,15 +23,15 @@ export const getAllOrders = async (req, res, next) => {
 
     // Filters
     const filters = {};
-    
+
     if (req.query.orderStatus) {
       filters.orderStatus = req.query.orderStatus;
     }
-    
+
     if (req.query.paymentStatus) {
       filters.paymentStatus = req.query.paymentStatus;
     }
-    
+
     if (req.query.paymentMethod) {
       filters.paymentMethod = req.query.paymentMethod;
     }
@@ -50,9 +50,9 @@ export const getAllOrders = async (req, res, next) => {
     // Search by order ID or customer email
     if (req.query.search) {
       filters.$or = [
-        { orderId: { $regex: req.query.search, $options: 'i' } },
-        { 'customer.email': { $regex: req.query.search, $options: 'i' } },
-        { 'customer.name': { $regex: req.query.search, $options: 'i' } }
+        { orderId: { $regex: req.query.search, $options: "i" } },
+        { "customer.email": { $regex: req.query.search, $options: "i" } },
+        { "customer.name": { $regex: req.query.search, $options: "i" } },
       ];
     }
 
@@ -60,7 +60,7 @@ export const getAllOrders = async (req, res, next) => {
     let sort = {};
     if (req.query.sortBy) {
       const sortField = req.query.sortBy;
-      const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+      const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
       sort[sortField] = sortOrder;
     } else {
       sort = { createdAt: -1 }; // Default: newest first
@@ -68,7 +68,7 @@ export const getAllOrders = async (req, res, next) => {
 
     // Get orders
     const orders = await Order.find(filters)
-      .populate('items.product', 'name sku')
+      .populate("items.product", "name sku")
       .sort(sort)
       .skip(skip)
       .limit(limit);
@@ -77,23 +77,17 @@ export const getAllOrders = async (req, res, next) => {
     const totalOrders = await Order.countDocuments(filters);
     const totalPages = Math.ceil(totalOrders / limit);
 
-    return ResponseHandler.success(
-      res,
-      200,
-      getMessage('SUCCESS', language),
-      {
-        orders,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalOrders,
-          ordersPerPage: limit,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1
-        }
-      }
-    );
-
+    return ResponseHandler.success(res, 200, getMessage("SUCCESS", language), {
+      orders,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalOrders,
+        ordersPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -106,26 +100,27 @@ export const getAllOrders = async (req, res, next) => {
 export const getOrderById = async (req, res, next) => {
   try {
     const { orderId } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
-    const order = await Order.findOne({ orderId })
-      .populate('items.product', 'name sku images price');
+    const order = await Order.findOne({ orderId }).populate(
+      "items.product",
+      "name sku images price"
+    );
 
     if (!order) {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Order not found' : 'Bestilling ikke funnet'
+        language === "en" ? "Order not found" : "Bestilling ikke funnet"
       );
     }
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('SUCCESS', language),
+      getMessage("SUCCESS", language),
       order
     );
-
   } catch (error) {
     next(error);
   }
@@ -139,23 +134,21 @@ export const updateOrderStatus = async (req, res, next) => {
   try {
     const { orderId } = req.params;
     const { orderStatus } = req.body;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     if (!orderStatus) {
-      return ResponseHandler.error(
-        res,
-        400,
-        'Order status is required'
-      );
+      return ResponseHandler.error(res, 400, "Order status is required");
     }
 
-    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    const validStatuses = [
+      "pending",
+      "processing",
+      "shipped",
+      "delivered",
+      "cancelled",
+    ];
     if (!validStatuses.includes(orderStatus)) {
-      return ResponseHandler.error(
-        res,
-        400,
-        'Invalid order status'
-      );
+      return ResponseHandler.error(res, 400, "Invalid order status");
     }
 
     const order = await Order.findOne({ orderId });
@@ -164,37 +157,75 @@ export const updateOrderStatus = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Order not found' : 'Bestilling ikke funnet'
+        language === "en" ? "Order not found" : "Bestilling ikke funnet"
       );
     }
 
     // If cancelling order, restore stock
-    if (orderStatus === 'cancelled' && order.orderStatus !== 'cancelled') {
+    if (orderStatus === "cancelled" && order.orderStatus !== "cancelled") {
       for (const item of order.items) {
-        await Product.findByIdAndUpdate(
-          item.product,
-          {
-            $inc: {
-              stock: item.quantity,
-              salesCount: -item.quantity
-            }
-          }
-        );
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: {
+            stock: item.quantity,
+            salesCount: -item.quantity,
+          },
+        });
       }
     }
 
     order.orderStatus = orderStatus;
     await order.save();
 
-    await order.populate('items.product', 'name sku');
+    await order.populate("items.product", "name sku");
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('UPDATED', language),
+      getMessage("UPDATED", language),
       order
     );
+  } catch (error) {
+    next(error);
+  }
+};
 
+/**
+ * Update payment status
+ * PATCH /api/admin/orders/:orderId/payment-status
+ */
+export const updatePaymentStatus = async (req, res, next) => {
+  try {
+    const { orderId } = req.params;
+    const { paymentStatus } = req.body;
+    const language = req.language || "en";
+
+    const order = await Order.findOne({ orderId });
+
+    if (!order) {
+      return ResponseHandler.error(
+        res,
+        404,
+        language === "en" ? "Order not found" : "Bestilling ikke funnet"
+      );
+    }
+
+    order.paymentStatus = paymentStatus;
+
+    // If paid, update payment info
+    if (paymentStatus === "paid" && !order.paymentInfo?.paidAt) {
+      if (!order.paymentInfo) order.paymentInfo = {};
+      order.paymentInfo.paidAt = new Date();
+      order.paymentInfo.status = "succeeded";
+    }
+
+    await order.save();
+
+    return ResponseHandler.success(
+      res,
+      200,
+      getMessage("UPDATED", language),
+      order
+    );
   } catch (error) {
     next(error);
   }
@@ -208,7 +239,7 @@ export const updateShippingInfo = async (req, res, next) => {
   try {
     const { orderId } = req.params;
     const { trackingNumber, carrier, estimatedDelivery } = req.body;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     const order = await Order.findOne({ orderId });
 
@@ -216,29 +247,29 @@ export const updateShippingInfo = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Order not found' : 'Bestilling ikke funnet'
+        language === "en" ? "Order not found" : "Bestilling ikke funnet"
       );
     }
 
     if (trackingNumber) order.trackingNumber = trackingNumber;
     if (carrier) order.carrier = carrier;
-    if (estimatedDelivery) order.estimatedDelivery = new Date(estimatedDelivery);
+    if (estimatedDelivery)
+      order.estimatedDelivery = new Date(estimatedDelivery);
 
     // Auto-update order status to shipped if tracking added
-    if (trackingNumber && order.orderStatus === 'processing') {
-      order.orderStatus = 'shipped';
+    if (trackingNumber && order.orderStatus === "processing") {
+      order.orderStatus = "shipped";
     }
 
     await order.save();
-    await order.populate('items.product', 'name sku');
+    await order.populate("items.product", "name sku");
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('UPDATED', language),
+      getMessage("UPDATED", language),
       order
     );
-
   } catch (error) {
     next(error);
   }
@@ -250,7 +281,7 @@ export const updateShippingInfo = async (req, res, next) => {
  */
 export const getOrderStats = async (req, res, next) => {
   try {
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     // Total orders
     const totalOrders = await Order.countDocuments();
@@ -259,34 +290,34 @@ export const getOrderStats = async (req, res, next) => {
     const ordersByStatus = await Order.aggregate([
       {
         $group: {
-          _id: '$orderStatus',
-          count: { $sum: 1 }
-        }
-      }
+          _id: "$orderStatus",
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     // Orders by payment status
     const ordersByPaymentStatus = await Order.aggregate([
       {
         $group: {
-          _id: '$paymentStatus',
-          count: { $sum: 1 }
-        }
-      }
+          _id: "$paymentStatus",
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     // Total revenue
     const revenueData = await Order.aggregate([
       {
-        $match: { paymentStatus: 'paid' }
+        $match: { paymentStatus: "paid" },
       },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: '$total' },
-          averageOrderValue: { $avg: '$total' }
-        }
-      }
+          totalRevenue: { $sum: "$total" },
+          averageOrderValue: { $avg: "$total" },
+        },
+      },
     ]);
 
     // Recent orders (last 30 days)
@@ -294,22 +325,22 @@ export const getOrderStats = async (req, res, next) => {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const recentOrdersCount = await Order.countDocuments({
-      createdAt: { $gte: thirtyDaysAgo }
+      createdAt: { $gte: thirtyDaysAgo },
     });
 
     const recentRevenue = await Order.aggregate([
       {
         $match: {
           createdAt: { $gte: thirtyDaysAgo },
-          paymentStatus: 'paid'
-        }
+          paymentStatus: "paid",
+        },
       },
       {
         $group: {
           _id: null,
-          total: { $sum: '$total' }
-        }
-      }
+          total: { $sum: "$total" },
+        },
+      },
     ]);
 
     // Orders by month (last 12 months)
@@ -319,74 +350,77 @@ export const getOrderStats = async (req, res, next) => {
     const ordersByMonth = await Order.aggregate([
       {
         $match: {
-          createdAt: { $gte: twelveMonthsAgo }
-        }
+          createdAt: { $gte: twelveMonthsAgo },
+        },
       },
       {
         $group: {
           _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' }
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
           },
           count: { $sum: 1 },
-          revenue: { $sum: '$total' }
-        }
+          revenue: { $sum: "$total" },
+        },
       },
       {
-        $sort: { '_id.year': 1, '_id.month': 1 }
-      }
+        $sort: { "_id.year": 1, "_id.month": 1 },
+      },
     ]);
 
     // Top selling products
     const topProducts = await Order.aggregate([
       {
-        $match: { orderStatus: { $ne: 'cancelled' } }
+        $match: { orderStatus: { $ne: "cancelled" } },
       },
       {
-        $unwind: '$items'
+        $unwind: "$items",
       },
       {
         $group: {
-          _id: '$items.product',
-          totalQuantity: { $sum: '$items.quantity' },
-          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.price'] } }
-        }
+          _id: "$items.product",
+          totalQuantity: { $sum: "$items.quantity" },
+          totalRevenue: {
+            $sum: { $multiply: ["$items.quantity", "$items.price"] },
+          },
+        },
       },
       {
-        $sort: { totalQuantity: -1 }
+        $sort: { totalQuantity: -1 },
       },
       {
-        $limit: 10
+        $limit: 10,
       },
       {
         $lookup: {
-          from: 'products',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'product'
-        }
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
       },
       {
-        $unwind: '$product'
+        $unwind: "$product",
       },
       {
         $project: {
-          productId: '$_id',
-          name: '$product.name',
-          sku: '$product.sku',
+          productId: "$_id",
+          name: "$product.name",
+          sku: "$product.sku",
           totalQuantity: 1,
-          totalRevenue: 1
-        }
-      }
+          totalRevenue: 1,
+        },
+      },
     ]);
 
     const stats = {
       overview: {
         totalOrders,
         totalRevenue: revenueData[0]?.totalRevenue || 0,
-        averageOrderValue: Math.round((revenueData[0]?.averageOrderValue || 0) * 100) / 100,
+        averageOrderValue:
+          Math.round((revenueData[0]?.averageOrderValue || 0) * 100) / 100,
         recentOrders: recentOrdersCount,
-        recentRevenue: recentRevenue[0]?.total || 0
+        recentRevenue: recentRevenue[0]?.total || 0,
       },
       ordersByStatus: ordersByStatus.reduce((acc, item) => {
         acc[item._id] = item.count;
@@ -397,16 +431,15 @@ export const getOrderStats = async (req, res, next) => {
         return acc;
       }, {}),
       ordersByMonth,
-      topProducts
+      topProducts,
     };
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('SUCCESS', language),
+      getMessage("SUCCESS", language),
       stats
     );
-
   } catch (error) {
     next(error);
   }
@@ -419,7 +452,7 @@ export const getOrderStats = async (req, res, next) => {
 export const deleteOrder = async (req, res, next) => {
   try {
     const { orderId } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     const order = await Order.findOne({ orderId });
 
@@ -427,36 +460,29 @@ export const deleteOrder = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Order not found' : 'Bestilling ikke funnet'
+        language === "en" ? "Order not found" : "Bestilling ikke funnet"
       );
     }
 
     // Restore stock if not already cancelled
-    if (order.orderStatus !== 'cancelled') {
+    if (order.orderStatus !== "cancelled") {
       for (const item of order.items) {
-        await Product.findByIdAndUpdate(
-          item.product,
-          {
-            $inc: {
-              stock: item.quantity,
-              salesCount: -item.quantity
-            }
-          }
-        );
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: {
+            stock: item.quantity,
+            salesCount: -item.quantity,
+          },
+        });
       }
     }
 
     // Soft delete - set status to cancelled
-    order.orderStatus = 'cancelled';
+    order.orderStatus = "cancelled";
     await order.save();
 
-    return ResponseHandler.success(
-      res,
-      200,
-      getMessage('DELETED', language),
-      { orderId: order.orderId }
-    );
-
+    return ResponseHandler.success(res, 200, getMessage("DELETED", language), {
+      orderId: order.orderId,
+    });
   } catch (error) {
     next(error);
   }
@@ -468,15 +494,15 @@ export const deleteOrder = async (req, res, next) => {
  */
 export const exportOrders = async (req, res, next) => {
   try {
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     // Get filters from query (same as getAllOrders)
     const filters = {};
-    
+
     if (req.query.orderStatus) {
       filters.orderStatus = req.query.orderStatus;
     }
-    
+
     if (req.query.paymentStatus) {
       filters.paymentStatus = req.query.paymentStatus;
     }
@@ -492,27 +518,27 @@ export const exportOrders = async (req, res, next) => {
     }
 
     const orders = await Order.find(filters)
-      .populate('items.product', 'name sku')
+      .populate("items.product", "name sku")
       .sort({ createdAt: -1 });
 
     // Convert to CSV format
     const csvHeaders = [
-      'Order ID',
-      'Customer Name',
-      'Customer Email',
-      'Phone',
-      'Total',
-      'Order Status',
-      'Payment Status',
-      'Payment Method',
-      'Created At',
-      'Items'
-    ].join(',');
+      "Order ID",
+      "Customer Name",
+      "Customer Email",
+      "Phone",
+      "Total",
+      "Order Status",
+      "Payment Status",
+      "Payment Method",
+      "Created At",
+      "Items",
+    ].join(",");
 
-    const csvRows = orders.map(order => {
-      const items = order.items.map(item => 
-        `${item.name[language]} (x${item.quantity})`
-      ).join('; ');
+    const csvRows = orders.map((order) => {
+      const items = order.items
+        .map((item) => `${item.name[language]} (x${item.quantity})`)
+        .join("; ");
 
       return [
         order.orderId,
@@ -524,17 +550,19 @@ export const exportOrders = async (req, res, next) => {
         order.paymentStatus,
         order.paymentMethod,
         order.createdAt.toISOString(),
-        `"${items}"`
-      ].join(',');
+        `"${items}"`,
+      ].join(",");
     });
 
-    const csv = [csvHeaders, ...csvRows].join('\n');
+    const csv = [csvHeaders, ...csvRows].join("\n");
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=orders-${Date.now()}.csv`);
-    
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=orders-${Date.now()}.csv`
+    );
+
     return res.send(csv);
-
   } catch (error) {
     next(error);
   }

@@ -1,15 +1,13 @@
-import express from 'express';
-import 'dotenv/config';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import mongoSanitize from 'express-mongo-sanitize';
-import connectDB from './config/database.js';
-import { errorHandler, notFound } from './middleware/errorHandler.js';
-import languageMiddleware from './middleware/languageMiddleware.js';
-import ResponseHandler from './utils/responseHandler.js';
-
-
+import express from "express";
+import "dotenv/config";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import mongoSanitize from "express-mongo-sanitize";
+import connectDB from "./config/database.js";
+import { errorHandler, notFound } from "./middleware/errorHandler.js";
+import languageMiddleware from "./middleware/languageMiddleware.js";
+import ResponseHandler from "./utils/responseHandler.js";
 
 const app = express();
 
@@ -18,9 +16,9 @@ connectDB();
 app.use(helmet());
 
 const corsOptions = {
-    origin: true,
-    credentials: true,
-    optionsSuccessStatus: 200
+  origin: true,
+  credentials: true,
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
@@ -30,54 +28,52 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(mongoSanitize());
 
-if (process.env.NODE_ENV === 'development') {
-    app.use(morgan('dev'));
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
 }
 
 app.use(languageMiddleware);
 
-app.get('/', (req, res) => {
-    ResponseHandler.success(res, 200, 'Welcome to the Afroluxe API', {
-        version: '1.0.0',
-        environment: process.env.NODE_ENV,
-        timestamp: new Date().toISOString(),
-    });
+app.get("/", (req, res) => {
+  ResponseHandler.success(res, 200, "Welcome to the Afroluxe API", {
+    version: "1.0.0",
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+  });
 });
 
-app.get('/api/health', (req, res) => {
-    ResponseHandler.success(res, 200, 'API is healthy', {
-        status: 'OK',
-        database: 'Connected',
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-    });
+app.get("/api/health", (req, res) => {
+  ResponseHandler.success(res, 200, "API is healthy", {
+    status: "OK",
+    database: "Connected",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
 });
 
-//Routes 
-import productRoutes from './routes/productsRoutes.js';
-import adminProductRoutes from './routes/adminProductRoutes.js';
-import cartRoutes from './routes/cartRoutes.js';
-import orderRoutes from './routes/orderRoutes.js';
-import authRoutes from './routes/authRoutes.js';
-import adminRoutes from './routes/adminRoutes.js';
-import paymentRoutes from './routes/paymentRoutes.js';
-import adminOrderRoutes from './routes/adminOrderRoutes.js';
-import imageRoutes from './routes/imageRoutes.js';
-import categoryRoutes from './routes/categoryRoutes.js';
+//Routes
+import productRoutes from "./routes/productsRoutes.js";
+import adminProductRoutes from "./routes/adminProductRoutes.js";
+import cartRoutes from "./routes/cartRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import adminOrderRoutes from "./routes/adminOrderRoutes.js";
+import imageRoutes from "./routes/imageRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
 
-
-app.use('/api/products', productRoutes);
-app.use('/api/admin/products', adminProductRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/checkout', orderRoutes)
-app.use('/api/orders', orderRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/admin/users', adminRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/admin/orders', adminOrderRoutes);
-app.use('/api/admin/images', imageRoutes);
-app.use('/api/categories', categoryRoutes);
-
+app.use("/api/products", productRoutes);
+app.use("/api/admin/products", adminProductRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/checkout", orderRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/admin/users", adminRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/admin/orders", adminOrderRoutes);
+app.use("/api/admin/images", imageRoutes);
+app.use("/api/categories", categoryRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
@@ -91,7 +87,7 @@ app.listen(PORT, () => {
   console.log(`Access at: http://localhost:${PORT}`);
 });
 
-process.on('unhandledRejection', (err) => {
+process.on("unhandledRejection", (err) => {
   console.error(`Unhandled Rejection: ${err.message}`);
   process.exit(1);
 });
