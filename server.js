@@ -79,6 +79,8 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import securityRoutes from "./routes/securityRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import healthRoutes from './routes/healthRoutes.js';
 
 // Import specific rate limiters
 import {
@@ -88,6 +90,9 @@ import {
   paymentLimiter,
   adminLimiter,
 } from "./middleware/rateLimiter.js";
+
+// Health check routes (no rate limiting)
+app.use('/api/health', healthRoutes);
 
 app.use("/api/products", productRoutes);
 app.use("/api/admin/products", adminLimiter, adminProductRoutes);
@@ -102,6 +107,7 @@ app.use("/api/admin/images", adminLimiter, imageRoutes);
 app.use("/api/admin/analytics", adminLimiter, analyticsRoutes);
 app.use("/api/search", searchLimiter, searchRoutes);
 app.use("/api/admin/security", securityRoutes);
+app.use('/api/admin/notifications', adminLimiter, notificationRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

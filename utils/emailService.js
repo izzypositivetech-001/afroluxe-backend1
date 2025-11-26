@@ -1,194 +1,160 @@
 /**
  * Email Service
- * Handles sending emails for orders and notifications
+ * Send emails using Nodemailer with HTML templates
  */
 
-import nodemailer from "nodemailer";
+import nodemailer from 'nodemailer';
+import {
+  orderConfirmationTemplate,
+  orderStatusTemplate,
+  shippingNotificationTemplate,
+  paymentConfirmationTemplate,
+  orderCancellationTemplate,
+  adminNotificationTemplate
+} from './emailTemplates.js';
 
 // Create transporter
 const createTransporter = () => {
   return nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE || "gmail",
+    service: process.env.EMAIL_SERVICE || 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
-    },
+      pass: process.env.EMAIL_PASSWORD
+    }
   });
+};
+
+// Test transporter on load
+try {
+  const testTransporter = createTransporter();
+  testTransporter.verify((error, success) => {
+    if (error) {
+      console.error('Email transporter error:', error.message);
+    } else {
+      console.log('Email service ready');
+    }
+  });
+} catch (error) {
+  console.error('Email configuration error:', error.message);
+}
+
+/**
+ * Send email helper
+ */
+const sendEmail = async (to, subject, html) => {
+  try {
+    const transporter = createTransporter();
+    
+    const mailOptions = {
+      from: `AfroLuxe <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      html
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Email send error:', error.message);
+    return { success: false, error: error.message };
+  }
 };
 
 /**
  * Send order confirmation email
  */
-export const sendOrderConfirmation = async (order, language = "en") => {
-  try {
-    const transporter = createTransporter();
-
-    const subject =
-      language === "en"
-        ? `Order Confirmation - ${order.orderId}`
-        : `Ordrebekreftelse - ${order.orderId}`;
-
-    const greeting =
-      language === "en"
-        ? `Dear ${order.customer.name},`
-        : `Kjære ${order.customer.name},`;
-
-    const thankYou =
-      language === "en"
-        ? "Thank you for your order!"
-        : "Takk for din bestilling!";
-
-    const orderDetails =
-      language === "en" ? "Order Details:" : "Bestillingsdetaljer:";
-
-    const shippingInfo =
-      language === "en" ? "Shipping Address:" : "Leveringsadresse:";
-
-    const itemsList = order.items
-      .map(
-        (item) =>
-          `${item.name[language]} x ${item.quantity} - ${item.price} NOK`
-      )
-      .join("\n");
-
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">${thankYou}</h2>
-        <p>${greeting}</p>
-        <p>${
-          language === "en"
-            ? "Your order has been received and is being processed."
-            : "Din bestilling er mottatt og behandles."
-        }</p>
-        
-        <h3>${orderDetails}</h3>
-        <p><strong>${
-          language === "en" ? "Order ID" : "Bestillings-ID"
-        }:</strong> ${order.orderId}</p>
-        <p><strong>${
-          language === "en" ? "Order Date" : "Bestillingsdato"
-        }:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-        
-        <h4>${language === "en" ? "Items:" : "Varer:"}</h4>
-        <pre>${itemsList}</pre>
-        
-        <div style="margin-top: 20px; padding: 10px; background-color: #f5f5f5;">
-          <p><strong>${language === "en" ? "Subtotal" : "Delsum"}:</strong> ${
-      order.subtotal
-    } NOK</p>
-          <p><strong>${
-            language === "en" ? "Tax (25% MVA)" : "Skatt (25% MVA)"
-          }:</strong> ${order.tax} NOK</p>
-          <p><strong>${language === "en" ? "Shipping" : "Frakt"}:</strong> ${
-      order.shippingFee
-    } NOK</p>
-          <p style="font-size: 18px;"><strong>${
-            language === "en" ? "Total" : "Totalt"
-          }:</strong> ${order.total} NOK</p>
-        </div>
-        
-        <h4>${shippingInfo}</h4>
-        <p>
-          ${order.shippingAddress.street}<br>
-          ${order.shippingAddress.postalCode} ${order.shippingAddress.city}<br>
-          ${order.shippingAddress.country}
-        </p>
-        
-        <p style="margin-top: 30px;">
-          ${
-            language === "en"
-              ? "You can track your order status at any time."
-              : "Du kan spore bestillingsstatus når som helst."
-          }
-        </p>
-        
-        <p>
-          ${language === "en" ? "Best regards," : "Med vennlig hilsen,"}<br>
-          <strong>AfroLuxe Team</strong>
-        </p>
-      </div>
-    `;
-
-    await transporter.sendMail({
-      from: `"AfroLuxe" <${process.env.EMAIL_USER}>`,
-      to: order.customer.email,
-      subject,
-      html,
-    });
-
-    console.log(`Order confirmation email sent to ${order.customer.email}`);
-    return true;
-  } catch (error) {
-    console.error("Error sending order confirmation email:", error.message);
-    return false;
-  }
+export const sendOrderConfirmation = async (order, language = 'en') => {
+  const { subject, html } = orderConfirmationTemplate(order, language);
+  return await sendEmail(order.customer.email, subject, html);
 };
 
 /**
  * Send order status update email
  */
-export const sendOrderStatusUpdate = async (
-  order,
-  newStatus,
-  language = "en"
-) => {
-  try {
-    const transporter = createTransporter();
+export const sendOrderStatusUpdate = async (order, newStatus, language = 'en') => {
+  const { subject, html } = orderStatusTemplate(order, newStatus, language);
+  return await sendEmail(order.customer.email, subject, html);
+};
 
-    const statusMessages = {
-      processing: {
-        en: "Your order is being processed",
-        no: "Din bestilling behandles",
-      },
-      shipped: {
-        en: "Your order has been shipped",
-        no: "Din bestilling er sendt",
-      },
-      delivered: {
-        en: "Your order has been delivered",
-        no: "Din bestilling er levert",
-      },
-      cancelled: {
-        en: "Your order has been cancelled",
-        no: "Din bestilling er kansellert",
-      },
-    };
+/**
+ * Send shipping notification email
+ */
+export const sendShippingNotification = async (order, language = 'en') => {
+  const { subject, html } = shippingNotificationTemplate(order, language);
+  return await sendEmail(order.customer.email, subject, html);
+};
 
-    const subject =
-      language === "en"
-        ? `Order Update - ${order.orderId}`
-        : `Bestillingsoppdatering - ${order.orderId}`;
+/**
+ * Send payment confirmation email
+ */
+export const sendPaymentConfirmation = async (order, language = 'en') => {
+  const { subject, html } = paymentConfirmationTemplate(order, language);
+  return await sendEmail(order.customer.email, subject, html);
+};
 
-    const statusMessage = statusMessages[newStatus]?.[language] || newStatus;
+/**
+ * Send order cancellation email
+ */
+export const sendOrderCancellation = async (order, language = 'en') => {
+  const { subject, html } = orderCancellationTemplate(order, language);
+  return await sendEmail(order.customer.email, subject, html);
+};
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">${statusMessage}</h2>
-        <p>${language === "en" ? "Dear" : "Kjære"} ${order.customer.name},</p>
-        <p>${
-          language === "en"
-            ? `Your order ${order.orderId} status has been updated to: ${newStatus}`
-            : `Din bestilling ${order.orderId} status er oppdatert til: ${newStatus}`
-        }</p>
-        
-        <p style="margin-top: 30px;">
-          ${language === "en" ? "Best regards," : "Med vennlig hilsen,"}<br>
-          <strong>AfroLuxe Team</strong>
-        </p>
-      </div>
-    `;
-
-    await transporter.sendMail({
-      from: `"AfroLuxe" <${process.env.EMAIL_USER}>`,
-      to: order.customer.email,
-      subject,
-      html,
-    });
-
-    console.log(`Order status update email sent to ${order.customer.email}`);
-    return true;
-  } catch (error) {
-    console.error("Error sending status update email:", error.message);
-    return false;
+/**
+ * Send admin notification email
+ */
+export const sendAdminNotification = async (type, data, language = 'en') => {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  
+  if (!adminEmail) {
+    console.warn('ADMIN_EMAIL not configured, skipping admin notification');
+    return { success: false, error: 'Admin email not configured' };
   }
+
+  const { subject, html } = adminNotificationTemplate(type, data, language);
+  return await sendEmail(adminEmail, subject, html);
+};
+
+/**
+ * Send new order notification to admin
+ */
+export const notifyAdminNewOrder = async (order) => {
+  return await sendAdminNotification('new_order', {
+    orderId: order.orderId,
+    customer: order.customer.name,
+    total: order.total.toFixed(2)
+  });
+};
+
+/**
+ * Send low stock alert to admin
+ */
+export const notifyAdminLowStock = async (product, language = 'en') => {
+  return await sendAdminNotification('low_stock', {
+    productName: product.name[language],
+    stock: product.stock
+  });
+};
+
+/**
+ * Send order cancellation notification to admin
+ */
+export const notifyAdminOrderCancelled = async (order) => {
+  return await sendAdminNotification('order_cancelled', {
+    orderId: order.orderId,
+    customer: order.customer.name
+  });
+};
+
+export default {
+  sendOrderConfirmation,
+  sendOrderStatusUpdate,
+  sendShippingNotification,
+  sendPaymentConfirmation,
+  sendOrderCancellation,
+  sendAdminNotification,
+  notifyAdminNewOrder,
+  notifyAdminLowStock,
+  notifyAdminOrderCancelled
 };
