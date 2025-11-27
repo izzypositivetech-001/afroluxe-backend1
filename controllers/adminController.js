@@ -1,6 +1,6 @@
-import Admin from '../models/Admin.js';
-import ResponseHandler from '../utils/responseHandler.js';
-import { getMessage } from '../utils/translations.js';
+import Admin from "../models/admin.js";
+import ResponseHandler from "../utils/responseHandler.js";
+import { getMessage } from "../utils/translations.js";
 
 /**
  * Get all admins (Super Admin only)
@@ -8,17 +8,16 @@ import { getMessage } from '../utils/translations.js';
  */
 export const getAllAdmins = async (req, res, next) => {
   try {
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
-    const admins = await Admin.find().select('-password').sort('-createdAt');
+    const admins = await Admin.find().select("-password").sort("-createdAt");
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('SUCCESS', language),
+      getMessage("SUCCESS", language),
       admins
     );
-
   } catch (error) {
     next(error);
   }
@@ -31,25 +30,24 @@ export const getAllAdmins = async (req, res, next) => {
 export const getAdminById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
-    const admin = await Admin.findById(id).select('-password');
+    const admin = await Admin.findById(id).select("-password");
 
     if (!admin) {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Admin not found' : 'Admin ikke funnet'
+        language === "en" ? "Admin not found" : "Admin ikke funnet"
       );
     }
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('SUCCESS', language),
+      getMessage("SUCCESS", language),
       admin
     );
-
   } catch (error) {
     next(error);
   }
@@ -63,7 +61,7 @@ export const updateAdmin = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, email, role, isActive } = req.body;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     // Find admin
     let admin = await Admin.findById(id);
@@ -72,7 +70,7 @@ export const updateAdmin = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Admin not found' : 'Admin ikke funnet'
+        language === "en" ? "Admin not found" : "Admin ikke funnet"
       );
     }
 
@@ -83,7 +81,7 @@ export const updateAdmin = async (req, res, next) => {
         return ResponseHandler.error(
           res,
           400,
-          language === 'en' ? 'Email already in use' : 'E-post allerede i bruk'
+          language === "en" ? "Email already in use" : "E-post allerede i bruk"
         );
       }
     }
@@ -97,15 +95,14 @@ export const updateAdmin = async (req, res, next) => {
     await admin.save();
 
     // Remove password from response
-    admin = await Admin.findById(id).select('-password');
+    admin = await Admin.findById(id).select("-password");
 
     return ResponseHandler.success(
       res,
       200,
-      getMessage('UPDATED', language),
+      getMessage("UPDATED", language),
       admin
     );
-
   } catch (error) {
     next(error);
   }
@@ -118,16 +115,16 @@ export const updateAdmin = async (req, res, next) => {
 export const deleteAdmin = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     // Prevent deleting self
     if (id === req.admin.id) {
       return ResponseHandler.error(
         res,
         400,
-        language === 'en' 
-          ? 'Cannot delete your own account' 
-          : 'Kan ikke slette din egen konto'
+        language === "en"
+          ? "Cannot delete your own account"
+          : "Kan ikke slette din egen konto"
       );
     }
 
@@ -137,19 +134,15 @@ export const deleteAdmin = async (req, res, next) => {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Admin not found' : 'Admin ikke funnet'
+        language === "en" ? "Admin not found" : "Admin ikke funnet"
       );
     }
 
     await admin.deleteOne();
 
-    return ResponseHandler.success(
-      res,
-      200,
-      getMessage('DELETED', language),
-      { id }
-    );
-
+    return ResponseHandler.success(res, 200, getMessage("DELETED", language), {
+      id,
+    });
   } catch (error) {
     next(error);
   }
@@ -162,16 +155,16 @@ export const deleteAdmin = async (req, res, next) => {
 export const deactivateAdmin = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     // Prevent deactivating self
     if (id === req.admin.id) {
       return ResponseHandler.error(
         res,
         400,
-        language === 'en' 
-          ? 'Cannot deactivate your own account' 
-          : 'Kan ikke deaktivere din egen konto'
+        language === "en"
+          ? "Cannot deactivate your own account"
+          : "Kan ikke deaktivere din egen konto"
       );
     }
 
@@ -179,23 +172,22 @@ export const deactivateAdmin = async (req, res, next) => {
       id,
       { isActive: false },
       { new: true, runValidators: true }
-    ).select('-password');
+    ).select("-password");
 
     if (!admin) {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Admin not found' : 'Admin ikke funnet'
+        language === "en" ? "Admin not found" : "Admin ikke funnet"
       );
     }
 
     return ResponseHandler.success(
       res,
       200,
-      language === 'en' ? 'Admin deactivated' : 'Admin deaktivert',
+      language === "en" ? "Admin deactivated" : "Admin deaktivert",
       admin
     );
-
   } catch (error) {
     next(error);
   }
@@ -208,29 +200,28 @@ export const deactivateAdmin = async (req, res, next) => {
 export const activateAdmin = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const language = req.language || 'en';
+    const language = req.language || "en";
 
     const admin = await Admin.findByIdAndUpdate(
       id,
       { isActive: true },
       { new: true, runValidators: true }
-    ).select('-password');
+    ).select("-password");
 
     if (!admin) {
       return ResponseHandler.error(
         res,
         404,
-        language === 'en' ? 'Admin not found' : 'Admin ikke funnet'
+        language === "en" ? "Admin not found" : "Admin ikke funnet"
       );
     }
 
     return ResponseHandler.success(
       res,
       200,
-      language === 'en' ? 'Admin activated' : 'Admin aktivert',
+      language === "en" ? "Admin activated" : "Admin aktivert",
       admin
     );
-
   } catch (error) {
     next(error);
   }
