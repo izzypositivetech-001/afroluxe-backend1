@@ -288,10 +288,7 @@ export const clearCart = async (req, res, next) => {
 
     const cart = await Cart.findOneAndDelete({ sessionId });
 
-    if (!cart) {
-      return ResponseHandler.error(res, 404, "Cart not found");
-    }
-
+    // Even if cart not found, we consider it "cleared"
     return ResponseHandler.success(
       res,
       200,

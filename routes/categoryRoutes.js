@@ -1,26 +1,25 @@
 import express from "express";
-import Category from "../models/category.js";
+import {
+  getAllCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+} from "../controllers/categoryController.js";
+import { protect, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// @route   GET /api/categories
-// @desc    Get all categories
-// @access  Public
-router.get("/", async (req, res) => {
-  try {
-    const categories = await Category.find({ isActive: true });
+// Public route
+router.get("/", getAllCategories);
 
-    res.status(200).json({
-      success: true,
-      data: categories,
-    });
-  } catch (error) {
-    console.error("Error fetching categories:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch categories",
-    });
-  }
-});
+// Admin routes (protected)
+router.post("/", protect, authorize("admin", "super_admin"), createCategory);
+router.put("/:id", protect, authorize("admin", "super_admin"), updateCategory);
+router.delete(
+  "/:id",
+  protect,
+  authorize("admin", "super_admin"),
+  deleteCategory
+);
 
 export default router;
