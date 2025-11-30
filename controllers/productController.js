@@ -392,7 +392,13 @@ export const getAdminProducts = async (req, res, next) => {
       .limit(limit)
       .skip(skip);
 
-    const total = await Product.countDocuments(filter);
+    const [total, activeCount, lowStockCount, outOfStockCount] =
+      await Promise.all([
+        Product.countDocuments(filter),
+        Product.countDocuments({ ...filter, isActive: true }),
+        Product.countDocuments({ ...filter, stock: { $gt: 0, $lte: 10 } }),
+        Product.countDocuments({ ...filter, stock: 0 }),
+      ]);
 
     return ResponseHandler.paginated(
       res,
@@ -403,7 +409,12 @@ export const getAdminProducts = async (req, res, next) => {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / limit),
+        stats: {
+          active: activeCount,
+          lowStock: lowStockCount,
+          outOfStock: outOfStockCount,
+        },
       }
     );
   } catch (error) {
