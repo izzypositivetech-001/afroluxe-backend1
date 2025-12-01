@@ -1,6 +1,7 @@
 import express from "express";
 import "dotenv/config";
 import morgan from "morgan";
+import mongoose from "mongoose";
 import connectDB from "./config/database.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import languageMiddleware from "./middleware/languageMiddleware.js";
@@ -47,6 +48,42 @@ if (process.env.NODE_ENV === "development") {
 
 // Language middleware
 app.use(languageMiddleware);
+
+// Lightweight health check endpoint for uptime monitoring (no rate limiting)
+// This endpoint is specifically for Render/UptimeRobot to prevent service sleep
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+    },
+  });
+});
+
+// Database health check (separate endpoint to avoid unnecessary DB pings)
+app.get("/health/db", async (req, res) => {
+  try {
+    // Check if mongoose is connected
+    const dbState = mongoose.connection.readyState;
+    const dbStatus = dbState === 1 ? "connected" : "disconnected";
+
+    res.status(200).json({
+      status: "ok",
+      database: dbStatus,
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "error",
+      database: "error",
+      message: error.message,
+    });
+  }
+});
 
 app.get("/", (req, res) => {
   ResponseHandler.success(res, 200, "Welcome to the Afroluxe API", {
