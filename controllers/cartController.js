@@ -5,6 +5,39 @@ import { getMessage } from "../utils/translations.js";
 import { v4 as uuidv4 } from "uuid";
 
 /**
+ * Helper to transform cart for response
+ */
+const transformCart = (cart, language) => {
+  return {
+    _id: cart._id,
+    sessionId: cart.sessionId,
+    items: cart.items.map((item) => ({
+      _id: item._id,
+      product: item.product
+        ? {
+            _id: item.product._id,
+            name:
+              item.product.name[language] ||
+              item.product.name.en ||
+              item.product.name,
+            images: item.product.images,
+            stock: item.product.stock,
+            sku: item.product.sku,
+            price: item.product.price,
+            slug: item.product.slug,
+          }
+        : null,
+      quantity: item.quantity,
+      price: item.price,
+      subtotal: item.price * item.quantity,
+    })),
+    totalAmount: cart.totalAmount,
+    expiresAt: cart.expiresAt,
+    createdAt: cart.createdAt,
+  };
+};
+
+/**
  * Add item to cart
  * POST /api/cart/add
  */
@@ -91,15 +124,13 @@ export const addToCart = async (req, res, next) => {
     }
 
     await cart.save();
-
-    // Populate cart for response
     await cart.populate("items.product");
 
     return ResponseHandler.success(
       res,
       200,
       getMessage("ITEM_ADDED_TO_CART", language),
-      cart
+      transformCart(cart, language)
     );
   } catch (error) {
     next(error);
@@ -136,35 +167,11 @@ export const getCart = async (req, res, next) => {
       }
     }
 
-    // Transform cart items based on language
-    const transformedCart = {
-      _id: cart._id,
-      sessionId: cart.sessionId,
-      items: cart.items.map((item) => ({
-        _id: item._id,
-        product: item.product
-          ? {
-              _id: item.product._id,
-              name: item.product.name[language],
-              images: item.product.images,
-              stock: item.product.stock,
-              sku: item.product.sku,
-            }
-          : null,
-        quantity: item.quantity,
-        price: item.price,
-        subtotal: item.price * item.quantity,
-      })),
-      totalAmount: cart.totalAmount,
-      expiresAt: cart.expiresAt,
-      createdAt: cart.createdAt,
-    };
-
     return ResponseHandler.success(
       res,
       200,
       getMessage("SUCCESS", language),
-      transformedCart
+      transformCart(cart, language)
     );
   } catch (error) {
     next(error);
@@ -238,7 +245,7 @@ export const updateCartItem = async (req, res, next) => {
       res,
       200,
       getMessage("CART_UPDATED", language),
-      cart
+      transformCart(cart, language)
     );
   } catch (error) {
     next(error);
@@ -270,7 +277,7 @@ export const removeCartItem = async (req, res, next) => {
       res,
       200,
       getMessage("ITEM_REMOVED", language),
-      cart
+      transformCart(cart, language)
     );
   } catch (error) {
     next(error);
