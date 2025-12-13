@@ -37,8 +37,8 @@ export const protect = async (req, res, next) => {
     }
 
     // Check if admin is active
-    if (!req.admin.isActive) {
-      return ResponseHandler.error(res, 401, "Account is deactivated");
+    if (req.admin.status !== "active") {
+      return ResponseHandler.error(res, 401, "Account is not active");
     }
 
     next();

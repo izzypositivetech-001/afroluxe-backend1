@@ -1,188 +1,269 @@
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import Admin from "../models/admin.js";
 import ResponseHandler from "../utils/responseHandler.js";
 import { getMessage } from "../utils/translations.js";
-import { generateToken } from "../utils/generateToken.js";
+import { sendAdminRegistrationNotification } from "../services/emailService.js";
 
 /**
- * Register new admin (Super Admin only)
- * POST /api/auth/register
+ * Generate JWT Token
+ */
+const generateToken = (adminId) => {
+  return jwt.sign({ id: adminId }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+};
+
+/**
+ * @desc    Register admin
+ * @route   POST /api/auth/register
+ * @access  Public (but first admin becomes super admin, others need approval)
  */
 export const registerAdmin = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
     const language = req.language || "en";
+
+    // Validation
+    if (!name || !email || !password) {
+      return ResponseHandler.error(
+        res,
+        400,
+        "Please provide all required fields"
+      );
+    }
 
     // Check if email already exists
     const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) {
+      return ResponseHandler.error(res, 400, "Email already registered");
+    }
+
+    // Validate password length
+    if (password.length < 8) {
       return ResponseHandler.error(
         res,
         400,
-        language === "en" ? "Email already in use" : "E-post allerede i bruk"
+        "Password must be at least 8 characters"
       );
     }
 
-    // Create admin
-    const admin = await Admin.create({
-      name,
-      email,
-      password,
-      role: role || "admin",
-    });
+    // Check if this is the first admin
+    const adminCount = await Admin.countDocuments();
 
-    // Generate token
-    const token = generateToken(admin._id, admin.role);
+    // Hash password
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Remove password from response
-    const adminResponse = {
-      _id: admin._id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
-      isActive: admin.isActive,
-      createdAt: admin.createdAt,
-    };
+    if (adminCount === 0) {
+      // FIRST ADMIN - Becomes Super Admin (Active immediately)
+      const admin = await Admin.create({
+        name,
+        email,
+        password: hashedPassword,
+        role: "super_admin",
+        status: "active", // Active immediately
+        approvedBy: null,
+        approvedAt: new Date(), // Auto-approved
+      });
 
-    return ResponseHandler.success(res, 201, getMessage("CREATED", language), {
-      admin: adminResponse,
-      token,
-    });
+      // Generate token for first admin
+      const token = generateToken(admin._id);
+
+      return ResponseHandler.success(
+        res,
+        201,
+        "Super admin account created successfully",
+        {
+          token,
+          admin: {
+            id: admin._id,
+            name: admin.name,
+            email: admin.email,
+            role: admin.role,
+            status: admin.status,
+          },
+        }
+      );
+    } else {
+      // SUBSEQUENT ADMINS - Need approval (Pending)
+      const admin = await Admin.create({
+        name,
+        email,
+        password: hashedPassword,
+        role: "admin",
+        status: "pending", // Pending approval
+        approvedBy: null,
+        approvedAt: null,
+      });
+
+      // Send notification email to super admin
+      try {
+        const superAdmin = await Admin.findOne({
+          role: "super_admin",
+          status: "active",
+        });
+        if (superAdmin) {
+          await sendAdminRegistrationNotification(admin, superAdmin.email);
+        }
+      } catch (emailError) {
+        // Don't fail registration if email fails
+        console.error("Failed to send notification email:", emailError);
+      }
+
+      return ResponseHandler.success(
+        res,
+        201,
+        "Registration successful. Your account is pending approval from the super administrator.",
+        {
+          admin: {
+            id: admin._id,
+            name: admin.name,
+            email: admin.email,
+            role: admin.role,
+            status: admin.status,
+          },
+          message:
+            "You will receive an email notification once your account is approved.",
+        }
+      );
+    }
   } catch (error) {
+    console.error("Error registering admin:", error);
     next(error);
   }
 };
 
 /**
- * Login admin
- * POST /api/auth/login
+ * @desc    Login admin
+ * @route   POST /api/auth/login
+ * @access  Public
  */
 export const loginAdmin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const language = req.language || "en";
 
-    // Validate input
+    // Validation
     if (!email || !password) {
       return ResponseHandler.error(
         res,
         400,
-        language === "en"
-          ? "Please provide email and password"
-          : "Vennligst oppgi e-post og passord"
+        "Please provide email and password"
       );
     }
 
-    // Find admin with password field
+    // Find admin and include password
     const admin = await Admin.findOne({ email }).select("+password");
 
     if (!admin) {
-      return ResponseHandler.error(
-        res,
-        401,
-        getMessage("INVALID_CREDENTIALS", language)
-      );
+      return ResponseHandler.error(res, 401, "Invalid credentials");
     }
 
     // Check if admin is active
-    if (!admin.isActive) {
-      return ResponseHandler.error(
-        res,
-        401,
-        language === "en" ? "Account is deactivated" : "Konto er deaktivert"
-      );
+    if (admin.status !== "active") {
+      if (admin.status === "pending") {
+        return ResponseHandler.error(
+          res,
+          403,
+          "Your account is pending approval. Please contact the super administrator."
+        );
+      } else if (admin.status === "suspended") {
+        return ResponseHandler.error(
+          res,
+          403,
+          "Your account has been suspended. Please contact the super administrator."
+        );
+      }
     }
 
-    // Check password
-    const isPasswordMatch = await admin.comparePassword(password);
+    // Verify password
+    const isPasswordCorrect = await bcrypt.compare(password, admin.password);
 
-    if (!isPasswordMatch) {
-      return ResponseHandler.error(
-        res,
-        401,
-        getMessage("INVALID_CREDENTIALS", language)
-      );
+    if (!isPasswordCorrect) {
+      return ResponseHandler.error(res, 401, "Invalid credentials");
     }
 
     // Update last login
-    admin.lastLogin = new Date();
+    admin.lastLoginAt = new Date();
     await admin.save();
 
     // Generate token
-    const token = generateToken(admin._id, admin.role);
-
-    // Remove password from response
-    const adminResponse = {
-      _id: admin._id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
-      isActive: admin.isActive,
-      lastLogin: admin.lastLogin,
-    };
+    const token = generateToken(admin._id);
 
     return ResponseHandler.success(
       res,
       200,
       getMessage("LOGIN_SUCCESS", language),
       {
-        admin: adminResponse,
         token,
+        admin: {
+          id: admin._id,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role,
+          status: admin.status,
+          lastLoginAt: admin.lastLoginAt,
+        },
       }
     );
   } catch (error) {
+    console.error("Error logging in admin:", error);
     next(error);
   }
 };
 
 /**
- * Get current admin profile
- * GET /api/auth/me
+ * @desc    Get current admin profile
+ * @route   GET /api/auth/me
+ * @access  Private (Admin only)
  */
-export const getMe = async (req, res, next) => {
+export const getAdminProfile = async (req, res, next) => {
   try {
     const language = req.language || "en";
 
-    // req.admin is set by auth middleware
-    const admin = await Admin.findById(req.admin.id);
+    // req.admin is set by protect middleware
+    const admin = await Admin.findById(req.admin._id).select("-password");
 
     if (!admin) {
-      return ResponseHandler.error(
-        res,
-        404,
-        language === "en" ? "Admin not found" : "Admin ikke funnet"
-      );
+      return ResponseHandler.error(res, 404, "Admin not found");
     }
 
-    return ResponseHandler.success(
-      res,
-      200,
-      getMessage("SUCCESS", language),
-      admin
-    );
+    return ResponseHandler.success(res, 200, getMessage("SUCCESS", language), {
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        status: admin.status,
+        createdAt: admin.createdAt,
+        lastLoginAt: admin.lastLoginAt,
+      },
+    });
   } catch (error) {
+    console.error("Error getting admin profile:", error);
     next(error);
   }
 };
 
 /**
- * Logout admin
- * POST /api/auth/logout
+ * @desc    Logout admin
+ * @route   POST /api/auth/logout
+ * @access  Private (Admin only)
  */
 export const logoutAdmin = async (req, res, next) => {
   try {
     const language = req.language || "en";
 
     // In a stateless JWT system, logout is handled client-side
-    // by removing the token. This endpoint is just for consistency
-    // and can be used for logging/analytics
+    // by removing the token from localStorage
+    // This endpoint is optional but good for logging purposes
 
-    return ResponseHandler.success(
-      res,
-      200,
-      getMessage("LOGOUT_SUCCESS", language),
-      null
-    );
+    return ResponseHandler.success(res, 200, "Logged out successfully", {
+      message: "Please remove the token from client storage",
+    });
   } catch (error) {
+    console.error("Error logging out admin:", error);
     next(error);
   }
 };

@@ -3,7 +3,7 @@
  * Protect API endpoints from abuse
  */
 
-import rateLimit from 'express-rate-limit';
+import rateLimit from "express-rate-limit";
 
 /**
  * General API rate limiter
@@ -14,18 +14,21 @@ export const apiLimiter = rateLimit({
   max: 100, // Limit each IP to 100 requests per windowMs
   message: {
     success: false,
-    message: 'Too many requests from this IP, please try again later.',
-    retryAfter: '15 minutes'
+    message: "Too many requests from this IP, please try again later.",
+    retryAfter: "15 minutes",
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   skip: (req) => {
     // Skip rate limiting for admin routes during development
-    if (process.env.NODE_ENV === 'development' && req.path.includes('/admin/')) {
+    if (
+      process.env.NODE_ENV === "development" &&
+      req.path.includes("/admin/")
+    ) {
       return true;
     }
     return false;
-  }
+  },
 });
 
 /**
@@ -37,12 +40,13 @@ export const authLimiter = rateLimit({
   max: 5, // Limit each IP to 5 login attempts per windowMs
   message: {
     success: false,
-    message: 'Too many login attempts from this IP, please try again after 15 minutes.',
-    retryAfter: '15 minutes'
+    message:
+      "Too many login attempts from this IP, please try again after 15 minutes.",
+    retryAfter: "15 minutes",
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true // Don't count successful requests
+  skipSuccessfulRequests: true, // Don't count successful requests
 });
 
 /**
@@ -54,11 +58,11 @@ export const orderLimiter = rateLimit({
   max: 10, // Limit each IP to 10 orders per hour
   message: {
     success: false,
-    message: 'Too many orders from this IP, please try again later.',
-    retryAfter: '1 hour'
+    message: "Too many orders from this IP, please try again later.",
+    retryAfter: "1 hour",
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 /**
@@ -70,11 +74,11 @@ export const searchLimiter = rateLimit({
   max: 200, // Limit each IP to 200 searches per windowMs
   message: {
     success: false,
-    message: 'Too many search requests, please try again later.',
-    retryAfter: '15 minutes'
+    message: "Too many search requests, please try again later.",
+    retryAfter: "15 minutes",
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 /**
@@ -86,12 +90,12 @@ export const paymentLimiter = rateLimit({
   max: 10, // Limit each IP to 10 payment attempts per windowMs
   message: {
     success: false,
-    message: 'Too many payment attempts from this IP, please try again later.',
-    retryAfter: '15 minutes'
+    message: "Too many payment attempts from this IP, please try again later.",
+    retryAfter: "15 minutes",
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true
+  skipSuccessfulRequests: true,
 });
 
 /**
@@ -103,11 +107,11 @@ export const passwordResetLimiter = rateLimit({
   max: 3, // Limit each IP to 3 password reset attempts per hour
   message: {
     success: false,
-    message: 'Too many password reset attempts, please try again after 1 hour.',
-    retryAfter: '1 hour'
+    message: "Too many password reset attempts, please try again after 1 hour.",
+    retryAfter: "1 hour",
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 /**
@@ -119,9 +123,9 @@ export const adminLimiter = rateLimit({
   max: 200, // Higher limit for admin operations
   message: {
     success: false,
-    message: 'Too many requests, please try again later.',
-    retryAfter: '15 minutes'
+    message: "Too many requests, please try again later.",
+    retryAfter: "15 minutes",
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });

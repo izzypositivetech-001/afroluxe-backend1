@@ -60,7 +60,7 @@ export const getAdminById = async (req, res, next) => {
 export const updateAdmin = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, email, role, isActive } = req.body;
+    const { name, email, role, status } = req.body;
     const language = req.language || "en";
 
     // Find admin
@@ -90,7 +90,7 @@ export const updateAdmin = async (req, res, next) => {
     if (name) admin.name = name;
     if (email) admin.email = email;
     if (role) admin.role = role;
-    if (isActive !== undefined) admin.isActive = isActive;
+    if (status) admin.status = status;
 
     await admin.save();
 
@@ -170,7 +170,7 @@ export const deactivateAdmin = async (req, res, next) => {
 
     const admin = await Admin.findByIdAndUpdate(
       id,
-      { isActive: false },
+      { status: "suspended" },
       { new: true, runValidators: true }
     ).select("-password");
 
@@ -204,7 +204,7 @@ export const activateAdmin = async (req, res, next) => {
 
     const admin = await Admin.findByIdAndUpdate(
       id,
-      { isActive: true },
+      { status: "active" },
       { new: true, runValidators: true }
     ).select("-password");
 

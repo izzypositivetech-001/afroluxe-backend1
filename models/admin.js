@@ -1,38 +1,48 @@
-import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
+import mongoose from 'mongoose';
 
 const adminSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Name is required"],
+      required: [true, 'Name is required'],
       trim: true,
     },
     email: {
       type: String,
-      required: [true, "Email is required"],
-      trim: true,
-      lowercase: true,
+      required: [true, 'Email is required'],
       unique: true,
-      match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
-      minlength: [6, "Password must be at least 6 characters long"],
-      select: false,
+      required: [true, 'Password is required'],
+      minlength: [8, 'Password must be at least 8 characters'],
+      select: false, // Don't return password by default
     },
     role: {
       type: String,
-      enum: ["admin", "staff", "super_admin"],
-      default: "admin",
+      enum: ['super_admin', 'admin', 'developer', 'moderator'],
+      default: 'admin',
     },
-    isActive: {
-      type: Boolean,
-      default: true,
+    status: {
+      type: String,
+      enum: ['active', 'pending', 'suspended'],
+      default: 'pending', // New admins start as pending
     },
-    lastLogin: {
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin',
+      default: null,
+    },
+    approvedAt: {
       type: Date,
+      default: null,
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null,
     },
   },
   {
@@ -40,22 +50,12 @@ const adminSchema = new mongoose.Schema(
   }
 );
 
-//Hash password before saving
-adminSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
-    return next();
-  }
+// Index for faster email lookups
+adminSchema.index({ email: 1 });
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
+// Index for filtering by status
+adminSchema.index({ status: 1 });
 
-//Method to compare password
-adminSchema.methods.comparePassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
-};
-
-const Admin = mongoose.models.Admin || mongoose.model("Admin", adminSchema);
+const Admin = mongoose.model('Admin', adminSchema);
 
 export default Admin;
