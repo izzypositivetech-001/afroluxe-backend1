@@ -178,7 +178,7 @@ export const orderConfirmationTemplate = (order, language = "en") => {
     </div>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.FRONTEND_URL}/orders/${
+      <a href="${process.env.FRONTEND_URL}/order/success?orderId=${
     order.orderId
   }" class="button">${t.button}</a>
     </div>
@@ -236,7 +236,7 @@ export const orderStatusTemplate = (order, newStatus, language = "en") => {
     </div>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.FRONTEND_URL}/orders/${order.orderId}" class="button">${t.button}</a>
+      <a href="${process.env.FRONTEND_URL}/order/success?orderId=${order.orderId}" class="button">${t.button}</a>
     </div>
   `;
 
@@ -302,7 +302,7 @@ export const shippingNotificationTemplate = (order, language = "en") => {
     </div>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.FRONTEND_URL}/orders/${
+      <a href="${process.env.FRONTEND_URL}/order/success?orderId=${
     order.orderId
   }" class="button">${t.button}</a>
     </div>
@@ -357,7 +357,7 @@ export const paymentConfirmationTemplate = (order, language = "en") => {
     </div>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.FRONTEND_URL}/orders/${
+      <a href="${process.env.FRONTEND_URL}/order/success?orderId=${
     order.orderId
   }" class="button">${t.button}</a>
     </div>
@@ -418,7 +418,7 @@ export const orderCancellationTemplate = (order, language = "en") => {
     }
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.FRONTEND_URL}/orders/${
+      <a href="${process.env.FRONTEND_URL}/order/success?orderId=${
     order.orderId
   }" class="button">${t.button}</a>
     </div>
