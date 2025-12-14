@@ -13,8 +13,14 @@ import {
   adminNotificationTemplate,
 } from "./emailTemplates.js";
 
-// Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialize Resend (only when actually sending)
+let resend = null;
+const getResend = () => {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+};
 
 // From email address (must be verified in Resend)
 const FROM_EMAIL = process.env.FROM_EMAIL || "AfroLuxe <noreply@afroluxe.no>";
@@ -40,7 +46,7 @@ const sendEmail = async (to, subject, html) => {
       return { success: true, dev: true };
     }
 
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: FROM_EMAIL,
       to: [to],
       subject,
@@ -491,6 +497,82 @@ This is an automated notification from your admin system.
   };
 };
 
+/**
+ * Email template for admin reactivation (to reactivated admin)
+ * @param {Object} admin - Reactivated admin data
+ * @param {string} loginUrl - Admin login URL
+ */
+export const adminReactivationEmail = (admin, loginUrl) => {
+  return {
+    subject: "Admin Account Reactivated - AfroLuxe",
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #1A1A1A 0%, #4A5568 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .logo { font-size: 28px; font-weight: bold; }
+          .gold { color: #C9A961; }
+          .content { background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; }
+          .success-card { background: #E8F5E9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4CAF50; text-align: center; }
+          .button { display: inline-block; padding: 12px 30px; background: #C9A961; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 10px 0; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">Afro<span class="gold">Luxe</span></div>
+            <p style="margin: 10px 0 0 0; font-size: 16px;">Admin Panel</p>
+          </div>
+          
+          <div class="content">
+            <div class="success-card">
+              <h2 style="color: #4CAF50; margin-top: 0;">Account Reactivated!</h2>
+              <p style="font-size: 18px; margin: 10px 0;">Welcome back, ${admin.name}!</p>
+            </div>
+            
+            <p>Great news! Your admin account has been reactivated by the super administrator. You now have full access to the AfroLuxe admin panel again.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${loginUrl}" class="button">Login to Admin Panel</a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">
+              If you have any questions, please contact the super administrator.
+            </p>
+          </div>
+          
+          <div class="footer">
+            <p>AfroLuxe - Premium Hair Extensions</p>
+            <p>This is an automated notification from your admin system.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+Admin Account Reactivated - AfroLuxe
+
+🎉 Account Reactivated!
+
+Welcome back, ${admin.name}!
+
+Great news! Your admin account has been reactivated by the super administrator. You now have full access to the AfroLuxe admin panel again.
+
+Login to Admin Panel: ${loginUrl}
+
+If you have any questions, please contact the super administrator.
+
+---
+AfroLuxe - Premium Hair Extensions
+This is an automated notification from your admin system.
+    `,
+  };
+};
+
 export default {
   sendOrderConfirmation,
   sendOrderStatusUpdate,
@@ -504,4 +586,5 @@ export default {
   adminApprovalEmail,
   adminRejectionEmail,
   adminSuspensionEmail,
+  adminReactivationEmail,
 };

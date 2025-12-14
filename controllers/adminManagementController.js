@@ -5,6 +5,7 @@ import {
   sendApprovalEmail,
   sendRejectionEmail,
   sendSuspensionEmail,
+  sendReactivationEmail,
 } from "../services/emailService.js";
 
 /**
@@ -257,8 +258,12 @@ export const reactivateAdmin = async (req, res, next) => {
     admin.status = "active";
     await admin.save();
 
-    // TODO: Send reactivation email to admin
-    // await sendReactivationEmail(admin);
+    // Send reactivation email to admin
+    try {
+      await sendReactivationEmail(admin);
+    } catch (emailError) {
+      console.error("Failed to send reactivation email:", emailError);
+    }
 
     const reactivatedAdmin = await Admin.findById(adminId).select("-password");
 
