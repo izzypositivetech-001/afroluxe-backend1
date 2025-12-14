@@ -4,6 +4,7 @@ import {
   getOrderById,
   trackOrder,
   lookupOrdersByEmail,
+  cancelOrder,
 } from "../controllers/orderController.js";
 import { validateCheckout } from "../middleware/orderValidation.js";
 
@@ -13,6 +14,7 @@ const router = express.Router();
 router.post("/", validateCheckout, createOrder);
 router.get("/lookup", lookupOrdersByEmail);
 router.get("/track/:orderId", trackOrder);
+router.post("/:orderId/cancel", cancelOrder);
 router.get("/:orderId", getOrderById);
 
 export default router;

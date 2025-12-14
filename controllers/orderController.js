@@ -3,7 +3,13 @@ import Cart from "../models/cart.js";
 import Product from "../models/product.js";
 import ResponseHandler from "../utils/responseHandler.js";
 import { getMessage } from "../utils/translations.js";
-import { sendOrderConfirmation } from "../utils/emailService.js";
+import {
+  sendOrderConfirmation,
+  sendOrderCancellation,
+  notifyAdminNewOrder,
+  notifyAdminLowStock,
+  notifyAdminOrderCancelled,
+} from "../utils/emailService.js";
 
 /**
  * Create order from cart (Checkout)
@@ -126,6 +132,26 @@ export const createOrder = async (req, res, next) => {
     sendOrderConfirmation(order, language).catch((err) =>
       console.error("Email send failed:", err.message)
     );
+
+    // Notify admin about new order
+    notifyAdminNewOrder(order, language).catch((err) =>
+      console.error("Admin notification failed:", err.message)
+    );
+
+    // Check for low stock and notify admin
+    const LOW_STOCK_THRESHOLD = 10;
+    for (const item of cart.items) {
+      const product = await Product.findById(item.product._id);
+      if (
+        product &&
+        product.stock <= LOW_STOCK_THRESHOLD &&
+        product.stock > 0
+      ) {
+        notifyAdminLowStock(product, language).catch((err) =>
+          console.error("Low stock notification failed:", err.message)
+        );
+      }
+    }
 
     return ResponseHandler.success(
       res,
@@ -292,6 +318,95 @@ export const lookupOrdersByEmail = async (req, res, next) => {
       200,
       getMessage("SUCCESS", language),
       orders
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Cancel order (User-initiated)
+ * POST /api/orders/:orderId/cancel
+ */
+export const cancelOrder = async (req, res, next) => {
+  try {
+    const { orderId } = req.params;
+    const { email } = req.body;
+    const language = req.language || "en";
+
+    // Validate email is provided
+    if (!email) {
+      return ResponseHandler.error(
+        res,
+        400,
+        language === "en"
+          ? "Email is required to cancel order"
+          : "E-post er påkrevd for å kansellere bestilling"
+      );
+    }
+
+    // Find the order
+    const order = await Order.findOne({ orderId });
+
+    if (!order) {
+      return ResponseHandler.error(
+        res,
+        404,
+        language === "en" ? "Order not found" : "Bestilling ikke funnet"
+      );
+    }
+
+    // Security: Verify email matches order
+    if (order.customer.email.toLowerCase() !== email.toLowerCase()) {
+      return ResponseHandler.error(
+        res,
+        403,
+        language === "en"
+          ? "Email does not match order"
+          : "E-post samsvarer ikke med bestillingen"
+      );
+    }
+
+    // Check if order can be cancelled
+    if (!["pending", "processing"].includes(order.orderStatus)) {
+      return ResponseHandler.error(
+        res,
+        400,
+        language === "en"
+          ? `Cannot cancel order with status: ${order.orderStatus}`
+          : `Kan ikke kansellere bestilling med status: ${order.orderStatus}`
+      );
+    }
+
+    // Restore stock for all items
+    for (const item of order.items) {
+      await Product.findByIdAndUpdate(item.product, {
+        $inc: {
+          stock: item.quantity,
+          salesCount: -item.quantity,
+        },
+      });
+    }
+
+    // Update order status
+    order.orderStatus = "cancelled";
+    await order.save();
+
+    // Send cancellation emails
+    try {
+      await sendOrderCancellation(order, language);
+      await notifyAdminOrderCancelled(order, language);
+    } catch (emailError) {
+      console.error("Failed to send cancellation emails:", emailError);
+    }
+
+    return ResponseHandler.success(
+      res,
+      200,
+      language === "en"
+        ? "Order cancelled successfully"
+        : "Bestilling kansellert",
+      { orderId: order.orderId, status: order.orderStatus }
     );
   } catch (error) {
     next(error);

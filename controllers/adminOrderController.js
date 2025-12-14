@@ -7,6 +7,13 @@ import Order from "../models/order.js";
 import Product from "../models/product.js";
 import ResponseHandler from "../utils/responseHandler.js";
 import { getMessage } from "../utils/translations.js";
+import {
+  sendOrderStatusUpdate,
+  sendShippingNotification,
+  sendPaymentConfirmation,
+  sendOrderCancellation,
+  notifyAdminOrderCancelled,
+} from "../utils/emailService.js";
 
 /**
  * Get all orders with filters and pagination
@@ -178,6 +185,19 @@ export const updateOrderStatus = async (req, res, next) => {
 
     await order.populate("items.product", "name sku");
 
+    // Send email notifications based on status change
+    try {
+      if (orderStatus === "cancelled") {
+        await sendOrderCancellation(order, language);
+        // Notify admin about cancellation
+        await notifyAdminOrderCancelled(order, language);
+      } else {
+        await sendOrderStatusUpdate(order, orderStatus, language);
+      }
+    } catch (emailError) {
+      console.error("Failed to send order status email:", emailError);
+    }
+
     return ResponseHandler.success(
       res,
       200,
@@ -219,6 +239,15 @@ export const updatePaymentStatus = async (req, res, next) => {
     }
 
     await order.save();
+
+    // Send payment confirmation email when marked as paid
+    try {
+      if (paymentStatus === "paid") {
+        await sendPaymentConfirmation(order, language);
+      }
+    } catch (emailError) {
+      console.error("Failed to send payment confirmation email:", emailError);
+    }
 
     return ResponseHandler.success(
       res,
@@ -263,6 +292,15 @@ export const updateShippingInfo = async (req, res, next) => {
 
     await order.save();
     await order.populate("items.product", "name sku");
+
+    // Send shipping notification if tracking was added
+    try {
+      if (trackingNumber) {
+        await sendShippingNotification(order, language);
+      }
+    } catch (emailError) {
+      console.error("Failed to send shipping notification email:", emailError);
+    }
 
     return ResponseHandler.success(
       res,
@@ -479,6 +517,14 @@ export const deleteOrder = async (req, res, next) => {
     // Soft delete - set status to cancelled
     order.orderStatus = "cancelled";
     await order.save();
+
+    // Notify about cancellation
+    try {
+      await sendOrderCancellation(order, language);
+      await notifyAdminOrderCancelled(order, language);
+    } catch (emailError) {
+      console.error("Failed to send cancellation emails:", emailError);
+    }
 
     return ResponseHandler.success(res, 200, getMessage("DELETED", language), {
       orderId: order.orderId,
