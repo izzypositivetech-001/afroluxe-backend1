@@ -496,3 +496,135 @@ export const adminNotificationTemplate = (type, data, language = "en") => {
     html: emailWrapper(content, language),
   };
 };
+
+/**
+ * Contact form email template
+ */
+export const contactFormTemplate = (contactData) => {
+  const { name, email, subject, message } = contactData;
+
+  const content = `
+    <h2>New Contact Form Submission</h2>
+    
+    <div class="info-box">
+      <p><strong>From:</strong> ${name}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Subject:</strong> ${subject}</p>
+    </div>
+
+    <div class="order-details">
+      <h4>Message:</h4>
+      <p style="white-space: pre-wrap;">${message}</p>
+    </div>
+
+    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+      <p style="margin: 0; font-size: 14px; color: #666;">
+        <strong>Reply to:</strong> <a href="mailto:${email}">${email}</a>
+      </p>
+    </div>
+  `;
+
+  return {
+    subject: `Contact Form: ${subject}`,
+    html: emailWrapper(content, "en"),
+    text: `
+New Contact Form Submission
+
+From: ${name}
+Email: ${email}
+Subject: ${subject}
+
+Message:
+${message}
+
+---
+Reply to: ${email}
+    `,
+  };
+};
+
+/**
+ * Newsletter welcome email template
+ */
+export const newsletterWelcomeTemplate = (email, language = "en") => {
+  const frontendUrl = process.env.FRONTEND_URL || "https://www.afroluxe.no";
+
+  const t =
+    {
+      en: {
+        subject: "Welcome to AfroLuxe Newsletter!",
+        welcome: "Welcome to the Family!",
+        intro:
+          "Thank you for subscribing to our newsletter. You'll be the first to know about:",
+        benefits: [
+          "Exclusive offers and discounts",
+          "New product launches",
+          "Beauty tips and tutorials",
+          "Special promotions",
+        ],
+        button: "Shop Now",
+      },
+      no: {
+        subject: "Velkommen til AfroLuxe nyhetsbrev!",
+        welcome: "Velkommen til familien!",
+        intro:
+          "Takk for at du abonnerer på nyhetsbrevet vårt. Du vil være den første til å få vite om:",
+        benefits: [
+          "Eksklusive tilbud og rabatter",
+          "Nye produktlanseringer",
+          "Skjønnhetstips og veiledninger",
+          "Spesielle kampanjer",
+        ],
+        button: "Handle nå",
+      },
+    }[language] || {};
+
+  const content = `
+    <h2>${t.welcome}</h2>
+    <p>${t.intro}</p>
+    <ul>
+      ${t.benefits.map((b) => `<li>${b}</li>`).join("")}
+    </ul>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${frontendUrl}/shop" class="button">${t.button}</a>
+    </div>
+    <p style="font-size: 12px; color: #666; margin-top: 20px;">
+      <a href="${frontendUrl}/unsubscribe?email=${encodeURIComponent(
+    email
+  )}">Unsubscribe</a>
+    </p>
+  `;
+
+  return {
+    subject: t.subject,
+    html: emailWrapper(content, language),
+  };
+};
+
+/**
+ * New subscriber notification for admin
+ */
+export const newSubscriberNotificationTemplate = (subscriber) => {
+  const content = `
+    <h2>New Newsletter Subscriber!</h2>
+    
+    <div class="success-box">
+      <p><strong>Email:</strong> ${subscriber.email}</p>
+      <p><strong>Source:</strong> ${subscriber.source || "homepage"}</p>
+      <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+    </div>
+
+    <p>A new user has subscribed to the AfroLuxe newsletter.</p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${
+        process.env.FRONTEND_URL || "https://www.afroluxe.no"
+      }/admin/newsletter" class="button">View Subscribers</a>
+    </div>
+  `;
+
+  return {
+    subject: `New Newsletter Subscriber: ${subscriber.email}`,
+    html: emailWrapper(content, "en"),
+  };
+};

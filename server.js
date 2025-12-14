@@ -120,7 +120,9 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import healthRoutes from "./routes/healthRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
 import customerRoutes from "./routes/customerRoutes.js";
-import adminManagementRoutes from './routes/adminManagementRoutes.js';
+import adminManagementRoutes from "./routes/adminManagementRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
+import newsletterRoutes from "./routes/newsletterRoutes.js";
 
 // Import specific rate limiters
 import {
@@ -144,7 +146,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/search", searchLimiter, searchRoutes);
-app.use('/api/admin', adminManagementRoutes);
+app.use("/api/contact", contactRoutes);
+app.use("/api/newsletter", newsletterRoutes);
+app.use("/api/admin", adminManagementRoutes);
 
 // Admin routes
 app.use("/api/admin/products", adminLimiter, adminProductRoutes);
